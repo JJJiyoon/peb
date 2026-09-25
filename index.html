@@ -682,16 +682,20 @@ function finishActivity(){
   state.submitted = true;
   render();
 
-  if(CONFIG.GAS_ENDPOINT && CONFIG.GAS_ENDPOINT.indexOf("https://script.google.com/macros/s/AKfycbzz36geWoyXXPiU7X-VV_Q-pr67YF1aEMK30svybjwDFJ-ErfKdBBU1l-94NhXx4GNA/exec") === -1){
+  if(CONFIG.GAS_ENDPOINT){
     fetch(CONFIG.GAS_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" }, // GAS CORS 우회를 위해 text/plain 사용
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
-    }).catch(err=>{
-      console.error("전송 실패:", err);
+    })
+    .then(() => {
+      console.log("Google Sheets 전송 요청 완료");
+    })
+    .catch(err => {
+      console.error("Google Sheets 전송 실패:", err);
     });
   } else {
-    console.warn("CONFIG.GAS_ENDPOINT가 설정되지 않아 서버로 전송하지 않았습니다. 아래 데이터를 콘솔에서 확인하세요.");
+    console.warn("CONFIG.GAS_ENDPOINT가 설정되지 않았습니다.");
     console.log(payload);
   }
 }
