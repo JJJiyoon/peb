@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수학 학습 활동</title>
+<style>
+  :root{
+    --ink:#1f2430;
+    --ink-soft:#5b6270;
+    --line:#e2e5ea;
+    --bg:#fafbfc;
+    --card:#ffffff;
+    --accent:#3457d5;
+    --accent-soft:#e8edfc;
+    --danger:#c0392b;
+    --danger-soft:#fdecea;
+    --ok:#2e7d55;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,-apple-system,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+  #app{
+    flex:1;
+    width:100%;
+    max-width:760px;
+    margin:0 auto;
+    padding:32px 20px 120px 20px;
+  }
+  .page-index{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:18px;
+    letter-spacing:.02em;
+  }
+  h1{font-size:22px; margin:0 0 16px 0; line-height:1.4;}
+  h2{font-size:18px; margin:0 0 12px 0; line-height:1.4;}
+  p{line-height:1.75; color:var(--ink); font-size:15.5px;}
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:28px;
+    margin-bottom:16px;
+  }
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:13.5px; color:var(--ink-soft); margin-bottom:6px;}
+  .field input[type=text]{
+    width:100%; padding:11px 12px; font-size:15px;
+    border:1px solid var(--line); border-radius:8px; background:#fff;
+    font-family:inherit;
+  }
+  .field input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  textarea{
+    width:100%; min-height:140px; padding:12px; font-size:15px;
+    border:1px solid var(--line); border-radius:8px; resize:vertical;
+    font-family:inherit; line-height:1.6;
+  }
+  textarea:focus{outline:2px solid var(--accent); outline-offset:1px;}
+
+  .img-placeholder{
+    background:repeating-linear-gradient(45deg,#f0f1f4,#f0f1f4 10px,#e8e9ee 10px,#e8e9ee 20px);
+    border:1px dashed #c7cbd4;
+    border-radius:8px;
+    height:200px;
+    display:flex; align-items:center; justify-content:center;
+    color:#9098a5; font-size:13px; margin:18px 0;
+  }
+
+  .options{display:flex; flex-direction:column; gap:10px; margin-top:18px;}
+  .opt{
+    display:flex; align-items:center; gap:12px;
+    border:1.5px solid var(--line); border-radius:8px;
+    padding:13px 16px; cursor:pointer; background:#fff;
+    font-size:15px; transition:border-color .12s, background .12s;
+  }
+  .opt:hover{border-color:#b7c2ee;}
+  .opt.selected{border-color:var(--accent); background:var(--accent-soft);}
+  .opt .letter{
+    width:24px; height:24px; border-radius:50%; border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:12.5px;
+    flex-shrink:0; color:var(--ink-soft);
+  }
+  .opt.selected .letter{border-color:var(--accent); color:var(--accent); background:#fff;}
+
+  .likert-row{
+    display:flex; align-items:center; gap:18px;
+    padding:16px 4px; border-bottom:1px solid var(--line);
+  }
+  .likert-row:last-child{border-bottom:none;}
+  .likert-sentence{flex:1 1 auto; font-size:15px; line-height:1.5; min-width:180px;}
+  .likert-scale{display:flex; gap:14px; flex-shrink:0;}
+  .likert-opt{display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;}
+  .likert-opt input{width:18px; height:18px; cursor:pointer;}
+  .likert-opt span{font-size:11px; color:var(--ink-soft);}
+
+  .navbar{
+    position:fixed; left:0; right:0; bottom:0;
+    background:rgba(250,251,252,.94);
+    backdrop-filter:blur(6px);
+    border-top:1px solid var(--line);
+    padding:14px 20px;
+  }
+  .navbar-inner{
+    max-width:760px; margin:0 auto;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  button{
+    font-family:inherit; font-size:15px; font-weight:600;
+    padding:11px 26px; border-radius:8px; cursor:pointer;
+    border:1.5px solid var(--line); background:#fff; color:var(--ink);
+  }
+  button.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  button.primary:disabled{background:#c9d1ef; border-color:#c9d1ef; cursor:not-allowed;}
+  button.ghost{background:transparent;}
+  button:disabled{opacity:.5; cursor:not-allowed;}
+  .spacer{flex:1;}
+  .nav-hint{font-size:12.5px; color:var(--danger); margin-top:8px; text-align:right; min-height:16px;}
+
+  .selfverbal-box{
+    position:sticky; top:0; z-index:5;
+    background:var(--accent-soft); border:1px solid #c9d4f5; border-radius:8px;
+    padding:12px 16px; margin-bottom:22px; font-size:13.5px; line-height:1.55;
+    color:#28315e;
+  }
+  .selfverbal-box .tag{font-size:11px; font-weight:700; color:var(--accent); margin-bottom:4px; display:block;}
+
+  .fullscreen-msg{
+    min-height:60vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+  }
+  .fullscreen-msg .big{
+    font-size:26px; font-weight:700; line-height:1.5; max-width:560px;
+    color:var(--danger);
+  }
+
+  .choice-buttons{display:flex; flex-direction:column; gap:12px; margin-top:22px;}
+  .choice-buttons button{padding:16px; font-size:15.5px;}
+
+  .review-item .qtext{font-weight:600; margin-bottom:10px;}
+  .review-answer-row{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
+  .tag-pill{
+    font-size:13px; padding:6px 12px; border-radius:20px; font-weight:600;
+  }
+  .tag-pill.wrong{background:var(--danger-soft); color:var(--danger);}
+  .tag-pill.correct{background:#e6f4ec; color:var(--ok);}
+
+  #submitScreen{text-align:center; padding-top:80px;}
+  .small-note{font-size:12.5px; color:var(--ink-soft); margin-top:6px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="navbar" id="navbar"></div>
+
+<script>
+/* ======================================================================
+   설정 (CONFIG) — 배포 전 여기만 바꾸면 됩니다
+   ====================================================================== */
+const CONFIG = {
+  // 구글 앱스 스크립트 배포 후 나오는 웹앱 URL을 여기에 붙여넣으세요.
+  // 안내: 아래 함께 드린 apps_script_backend.gs 파일과 배포 가이드를 참고하세요.
+  GAS_ENDPOINT: "https://script.google.com/macros/s/AKfycbzz36geWoyXXPiU7X-VV_Q-pr67YF1aEMK30svybjwDFJ-ErfKdBBU1l-94NhXx4GNA/exec",
+  MC_PASS_THRESHOLD: 8,   // 목표 도달 기준 (현재는 페이지21 문구에 고정 텍스트로만 사용됨)
+  MC_TOTAL: 10,
+  SHORT_TOTAL: 5
+};
+
+/* ======================================================================
+   문항 데이터 — 지금은 뼈대만 채운 예시 문항입니다. 실제 문항으로 교체하세요.
+   ====================================================================== */
+const MC_PROBLEMS = [
+  { id:"mc1", question:"예시 객관식 문제 1. (실제 수학 문제로 교체) 12 + 7 = ?", options:["17","18","19","20","21"], answerIndex:2 },
+  { id:"mc2", question:"예시 객관식 문제 2. 45 - 19 = ?", options:["24","25","26","27","28"], answerIndex:2 },
+  { id:"mc3", question:"예시 객관식 문제 3. 6 × 7 = ?", options:["36","40","42","44","48"], answerIndex:2 },
+  { id:"mc4", question:"예시 객관식 문제 4. 81 ÷ 9 = ?", options:["7","8","9","10","11"], answerIndex:2 },
+  { id:"mc5", question:"예시 객관식 문제 5. 다음 중 소수가 아닌 것은?", options:["2","3","9","5","11"], answerIndex:2 },
+  { id:"mc6", question:"예시 객관식 문제 6. 1/2 + 1/4 = ?", options:["1/6","2/6","3/4","1","5/4"], answerIndex:2 },
+  { id:"mc7", question:"예시 객관식 문제 7. 3² + 4² = ?", options:["12","19","24","25","28"], answerIndex:3 },
+  { id:"mc8", question:"예시 객관식 문제 8. x + 5 = 12일 때 x는?", options:["5","6","7","8","17"], answerIndex:2 },
+  { id:"mc9", question:"예시 객관식 문제 9. 100의 20%는?", options:["10","15","20","25","30"], answerIndex:2 },
+  { id:"mc10", question:"예시 객관식 문제 10. 삼각형 내각의 합은?", options:["90°","120°","180°","270°","360°"], answerIndex:2 }
+];
+
+const SHORT_PROBLEMS = [
+  { id:"sa1", question:"예시 주관식 문제 1. 15 × 4 = ?", answer:"60" },
+  { id:"sa2", question:"예시 주관식 문제 2. 144 ÷ 12 = ?", answer:"12" },
+  { id:"sa3", question:"예시 주관식 문제 3. 7의 제곱은?", answer:"49" },
+  { id:"sa4", question:"예시 주관식 문제 4. 2, 5, 8, 11, ( )  다음 숫자는?", answer:"14" },
+  { id:"sa5", question:"예시 주관식 문제 5. 250의 10%는?", answer:"25" }
+];
+
+const ATTRIBUTION_QUESTION = "이번 수학 과제에서 목표로 제시된 기준에 도달하지 못한 가장 큰 이유는 무엇이라고 생각하나요? 이번 활동 전체를 생각하면서, 가장 중요하다고 생각하는 이유 한 가지를 자신의 말로 적어 주세요.";
+
+const CDSII_ITEMS = [
+  "방금 적은 원인은 내가 조절할 수 있는 것이다.",
+  "방금 적은 원인에는 내가 영향을 줄 수 있다.",
+  "방금 적은 원인에는 내가 바꿀 수 있는 부분이 있다."
+];
+
+/* ======================================================================
+   페이지 구성 (순서대로) — page.type 으로 렌더링 분기
+   ====================================================================== */
+const PAGES = [
+  { type:"info" },                                   // 1
+  { type:"content_learner" },                         // 2
+  { type:"content_peer" },                            // 3
+  { type:"selfverbal" },                               // 4
+  { type:"wait" },                                     // 5
+  ...MC_PROBLEMS.map((p,i)=>({ type:"mc", data:p, index:i })),      // 6-15
+  ...SHORT_PROBLEMS.map((p,i)=>({ type:"short", data:p, index:i })), // 16-20
+  { type:"failure" },                                 // 21
+  { type:"attribution_open" },                        // 22
+  { type:"attribution_likert" },                      // 23
+  { type:"review_choice" }                            // 24
+];
+
+/* ======================================================================
+   상태(state)
+   ====================================================================== */
+const state = {
+  studentInfo: { school:"", grade:"", classroom:"", name:"" },
+  selfVerbal: "",
+  mcAnswers: {},     // id -> { selected, isCorrect, responseTimeMs }
+  shortAnswers: {},  // id -> { value, isCorrect, responseTimeMs }
+  attributionOpen: "",
+  cdsii: [null, null, null],
+  reviewed: false,
+  submitted: false
+};
+
+let currentPage = 0;
+let pageEnteredAt = Date.now();
+let reviewMode = false;
+let reviewIndex = 0;
+let reviewList = []; // 틀린 문항 목록 (review_choice에서 계산)
+
+const appEl = document.getElementById("app");
+const navEl = document.getElementById("navbar");
+
+/* ======================================================================
+   유틸
+   ====================================================================== */
+function recordTimeOnCurrentPage(){
+  const elapsed = Date.now() - pageEnteredAt;
+  const page = PAGES[currentPage];
+  if(!page) return;
+  if(page.type === "mc"){
+    const id = page.data.id;
+    const prev = state.mcAnswers[id] || {};
+    state.mcAnswers[id] = { ...prev, responseTimeMs: (prev.responseTimeMs||0) + elapsed };
+  } else if(page.type === "short"){
+    const id = page.data.id;
+    const prev = state.shortAnswers[id] || {};
+    state.shortAnswers[id] = { ...prev, responseTimeMs: (prev.responseTimeMs||0) + elapsed };
+  }
+}
+
+function selfVerbalBanner(){
+  if(currentPage < 4 || reviewMode === "none") return "";
+  if(!state.selfVerbal) return "";
+  return `<div class="selfverbal-box">
+    <span class="tag">나의 오류에 대한 생각</span>
+    ${escapeHtml(state.selfVerbal)}
+  </div>`;
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.innerText = str;
+  return d.innerHTML;
+}
+
+function pageIndexLabel(){
+  return `${currentPage+1} / ${PAGES.length}`;
+}
+
+/* ======================================================================
+   렌더링
+   ====================================================================== */
+function render(){
+  if(reviewMode){ renderReview(); return; }
+  if(state.submitted){ renderSubmitScreen(); return; }
+
+  const page = PAGES[currentPage];
+  let html = `<div class="page-index">${pageIndexLabel()}</div>`;
+  html += selfVerbalBanner();
+
+  switch(page.type){
+    case "info": html += renderInfo(); break;
+    case "content_learner": html += renderContentLearner(); break;
+    case "content_peer": html += renderContentPeer(); break;
+    case "selfverbal": html += renderSelfVerbal(); break;
+    case "wait": html += renderWait(); break;
+    case "mc": html += renderMC(page.data); break;
+    case "short": html += renderShort(page.data); break;
+    case "failure": html += renderFailure(); break;
+    case "attribution_open": html += renderAttributionOpen(); break;
+    case "attribution_likert": html += renderAttributionLikert(); break;
+    case "review_choice": html += renderReviewChoice(); break;
+  }
+
+  appEl.innerHTML = html;
+  attachPageEvents(page);
+  renderNav(page);
+}
+
+function renderInfo(){
+  const s = state.studentInfo;
+  return `
+  <div class="card">
+    <h1>참여자 정보 입력</h1>
+    <p>본 활동을 시작하기 전에, 아래 정보를 입력해 주세요.</p>
+    <div class="field"><label>학교</label><input type="text" id="f_school" value="${escapeHtml(s.school)}" placeholder="예: 한빛초등학교"></div>
+    <div class="field"><label>학년</label><input type="text" id="f_grade" value="${escapeHtml(s.grade)}" placeholder="예: 5학년"></div>
+    <div class="field"><label>반</label><input type="text" id="f_classroom" value="${escapeHtml(s.classroom)}" placeholder="예: 3반"></div>
+    <div class="field"><label>이름</label><input type="text" id="f_name" value="${escapeHtml(s.name)}" placeholder="예: 홍길동"></div>
+  </div>`;
+}
+
+function renderContentLearner(){
+  return `
+  <div class="card">
+    <h1>오류의 학습적 기능</h1>
+    <div class="img-placeholder">[이미지 삽입 위치 — 오류의 학습적 기능을 보여주는 그림]</div>
+    <p>[TODO: 오류가 학습에 어떤 긍정적 기능을 하는지 설명하는 본문 텍스트를 이곳에 작성하세요. 예: 오류는 무엇을 아직 모르는지 알려주는 신호이며, 학습자가 자신의 이해를 정교화하는 데 도움을 줍니다.]</p>
+  </div>`;
+}
+
+function renderContentPeer(){
+  return `
+  <div class="card">
+    <h1>또래 학생의 이야기</h1>
+    <div class="img-placeholder">[이미지 삽입 위치 — 또래 역할모델 캐릭터/사진]</div>
+    <p>[TODO: 또래 역할모델이 1인칭 시점에서 오류의 학습적 기능을 설명하는 텍스트를 이곳에 작성하세요.]</p>
+  </div>`;
+}
+
+function renderSelfVerbal(){
+  return `
+  <div class="card">
+    <h1>나의 생각 적어보기</h1>
+    <p>[TODO: 오류에 대한 자기 언어화를 유도하는 안내 문구를 이곳에 작성하세요. 예: 위에서 읽은 내용을 바탕으로, 오류에 대한 나의 생각을 자신의 말로 정리해 적어 보세요.]</p>
+    <textarea id="f_selfverbal" placeholder="여기에 나의 생각을 적어주세요.">${escapeHtml(state.selfVerbal)}</textarea>
+  </div>`;
+}
+
+function renderWait(){
+  return `
+  <div class="card fullscreen-msg" style="min-height:40vh;">
+    <p style="font-size:17px;">목표 기준은 15 문제 중 8문제 이상 정답을 맞추는 것입니다. 목표 기준에 도달하도록 문제를 풀어보세요.</p>
+    <p class="small-note">준비가 되면 아래 '다음' 버튼을 눌러 이동하세요.</p>
+  </div>`;
+}
+
+function renderMC(item){
+  const saved = state.mcAnswers[item.id];
+  const selected = saved ? saved.selected : null;
+  const letters = ["①","②","③","④","⑤"];
+  return `
+  <div class="card">
+    <h2>수학 문제</h2>
+    <p>${escapeHtml(item.question)}</p>
+    <div class="options">
+      ${item.options.map((opt,i)=>`
+        <div class="opt ${selected===i?"selected":""}" data-idx="${i}">
+          <span class="letter">${letters[i]}</span><span>${escapeHtml(opt)}</span>
+        </div>`).join("")}
+    </div>
+  </div>`;
+}
+
+function renderShort(item){
+  const saved = state.shortAnswers[item.id];
+  const val = saved ? saved.value : "";
+  return `
+  <div class="card">
+    <h2>수학 문제</h2>
+    <p>${escapeHtml(item.question)}</p>
+    <div class="field">
+      <label>정답을 입력하세요</label>
+      <input type="text" id="f_shortanswer" value="${escapeHtml(val)}" placeholder="답 입력">
+    </div>
+  </div>`;
+}
+
+function renderFailure(){
+  return `
+  <div class="fullscreen-msg">
+    <div class="big">당신은 15문제 중 8문제를 도달해야 하는 목표에<br>실패하였습니다.</div>
+  </div>`;
+}
+
+function renderAttributionOpen(){
+  return `
+  <div class="card">
+    <h1>이번 활동을 돌아보며</h1>
+    <p>${escapeHtml(ATTRIBUTION_QUESTION)}</p>
+    <textarea id="f_attribution" placeholder="여기에 나의 생각을 적어주세요.">${escapeHtml(state.attributionOpen)}</textarea>
+  </div>`;
+}
+
+function renderAttributionLikert(){
+  const scaleLabels = ["전혀\n아니다","아니다","보통이다","그렇다","매우\n그렇다"];
+  return `
+  <div class="card">
+    <h2>방금 적은 응답</h2>
+    <div class="selfverbal-box" style="position:static;">${escapeHtml(state.attributionOpen) || "(응답 없음)"}</div>
+  </div>
+  <div class="card">
+    <h2>아래 문장을 읽고 해당하는 정도를 선택해 주세요.</h2>
+    ${CDSII_ITEMS.map((sentence, qi)=>`
+      <div class="likert-row">
+        <div class="likert-sentence">${escapeHtml(sentence)}</div>
+        <div class="likert-scale">
+          ${scaleLabels.map((lab,li)=>`
+            <label class="likert-opt">
+              <input type="radio" name="cdsii_${qi}" value="${li+1}" ${state.cdsii[qi]===(li+1)?"checked":""} data-qi="${qi}">
+              <span>${li+1}</span>
+            </label>`).join("")}
+        </div>
+      </div>
+    `).join("")}
+  </div>`;
+}
+
+function renderReviewChoice(){
+  return `
+  <div class="card">
+    <h1>활동을 마치기 전에</h1>
+    <p>이번 과제에서 틀린 문제들을 다시 확인할 수 있습니다.</p>
+    <div class="choice-buttons">
+      <button class="primary" id="btnReviewWrong">틀린 문제 다시 확인하기</button>
+      <button class="ghost" id="btnFinishNoReview">검토하지 않고 활동 마치기</button>
+    </div>
+  </div>`;
+}
+
+function renderSubmitScreen(){
+  appEl.innerHTML = `
+  <div id="submitScreen">
+    <h1>제출이 완료되었습니다</h1>
+    <p>참여해 주셔서 감사합니다.</p>
+  </div>`;
+  navEl.innerHTML = "";
+}
+
+/* ======================================================================
+   검토(review) 모드 렌더링
+   ====================================================================== */
+function computeWrongList(){
+  const wrong = [];
+  MC_PROBLEMS.forEach(p=>{
+    const a = state.mcAnswers[p.id];
+    if(!a || a.isCorrect !== true){
+      wrong.push({ type:"mc", data:p, given: a ? a.selected : null });
+    }
+  });
+  SHORT_PROBLEMS.forEach(p=>{
+    const a = state.shortAnswers[p.id];
+    if(!a || a.isCorrect !== true){
+      wrong.push({ type:"short", data:p, given: a ? a.value : null });
+    }
+  });
+  return wrong;
+}
+
+function renderReview(){
+  const item = reviewList[reviewIndex];
+  let body;
+  if(item.type === "mc"){
+    const letters = ["①","②","③","④","⑤"];
+    body = `
+      <div class="card review-item">
+        <h2>수학 문제 (다시 보기)</h2>
+        <div class="qtext">${escapeHtml(item.data.question)}</div>
+        <div class="options">
+          ${item.data.options.map((opt,i)=>{
+            let cls = "";
+            if(i === item.data.answerIndex) cls = "selected";
+            return `<div class="opt ${cls}"><span class="letter">${letters[i]}</span><span>${escapeHtml(opt)}
+              ${i===item.given && i!==item.data.answerIndex ? ' <span class="tag-pill wrong">내가 고른 답</span>':''}
+              ${i===item.data.answerIndex ? ' <span class="tag-pill correct">정답</span>':''}
+            </span></div>`;
+          }).join("")}
+        </div>
+      </div>`;
+  } else {
+    body = `
+      <div class="card review-item">
+        <h2>수학 문제 (다시 보기)</h2>
+        <div class="qtext">${escapeHtml(item.data.question)}</div>
+        <div class="review-answer-row">
+          <span class="tag-pill wrong">내가 적은 답: ${escapeHtml(item.given || "(무응답)")}</span>
+          <span class="tag-pill correct">정답: ${escapeHtml(item.data.answer)}</span>
+        </div>
+      </div>`;
+  }
+
+  appEl.innerHTML = `<div class="page-index">틀린 문제 검토 ${reviewIndex+1} / ${reviewList.length}</div>` + body;
+
+  navEl.innerHTML = `
+    <div class="navbar-inner">
+      <button class="ghost" id="navPrev" ${reviewIndex===0?"disabled":""}>이전</button>
+      <div class="spacer"></div>
+      <button class="ghost" id="navFinishReview">검토 마치고 제출하기</button>
+      <button class="primary" id="navNext">${reviewIndex===reviewList.length-1 ? "완료" : "다음"}</button>
+    </div>`;
+
+  document.getElementById("navPrev").onclick = ()=>{ reviewIndex--; render(); };
+  document.getElementById("navFinishReview").onclick = ()=>{ finishActivity(); };
+  document.getElementById("navNext").onclick = ()=>{
+    if(reviewIndex < reviewList.length-1){ reviewIndex++; render(); }
+    else { finishActivity(); }
+  };
+}
+
+/* ======================================================================
+   이벤트 연결 (입력 저장)
+   ====================================================================== */
+function attachPageEvents(page){
+  if(page.type === "info"){
+    ["school","grade","classroom","name"].forEach(key=>{
+      const el = document.getElementById("f_"+key);
+      el.oninput = ()=>{ state.studentInfo[key] = el.value; updateNavValidity(); };
+    });
+  }
+  if(page.type === "selfverbal"){
+    const el = document.getElementById("f_selfverbal");
+    el.oninput = ()=>{ state.selfVerbal = el.value; updateNavValidity(); };
+  }
+  if(page.type === "mc"){
+    document.querySelectorAll(".opt").forEach(optEl=>{
+      optEl.onclick = ()=>{
+        const idx = parseInt(optEl.getAttribute("data-idx"));
+        const isCorrect = idx === page.data.answerIndex;
+        const prev = state.mcAnswers[page.data.id] || {};
+        state.mcAnswers[page.data.id] = { ...prev, selected: idx, isCorrect };
+        render();
+      };
+    });
+  }
+  if(page.type === "short"){
+    const el = document.getElementById("f_shortanswer");
+    el.oninput = ()=>{
+      const val = el.value;
+      const isCorrect = val.trim().replace(/\s/g,"") === page.data.answer.trim().replace(/\s/g,"");
+      const prev = state.shortAnswers[page.data.id] || {};
+      state.shortAnswers[page.data.id] = { ...prev, value: val, isCorrect };
+      updateNavValidity();
+    };
+  }
+  if(page.type === "attribution_open"){
+    const el = document.getElementById("f_attribution");
+    el.oninput = ()=>{ state.attributionOpen = el.value; updateNavValidity(); };
+  }
+  if(page.type === "attribution_likert"){
+    document.querySelectorAll("input[type=radio]").forEach(r=>{
+      r.onchange = ()=>{
+        const qi = parseInt(r.getAttribute("data-qi"));
+        state.cdsii[qi] = parseInt(r.value);
+        updateNavValidity();
+      };
+    });
+  }
+  if(page.type === "review_choice"){
+    document.getElementById("btnReviewWrong").onclick = ()=>{
+      reviewList = computeWrongList();
+      if(reviewList.length === 0){
+        finishActivity();
+        return;
+      }
+      reviewMode = true;
+      reviewIndex = 0;
+      render();
+    };
+    document.getElementById("btnFinishNoReview").onclick = ()=>{
+      state.reviewed = false;
+      finishActivity();
+    };
+  }
+}
+
+/* ======================================================================
+   유효성 검사 (다음 버튼 활성화 조건)
+   ====================================================================== */
+function isCurrentPageValid(){
+  const page = PAGES[currentPage];
+  switch(page.type){
+    case "info":{
+      const s = state.studentInfo;
+      return s.school.trim() && s.grade.trim() && s.classroom.trim() && s.name.trim();
+    }
+    case "selfverbal": return state.selfVerbal.trim().length > 0;
+    case "mc": return state.mcAnswers[page.data.id]?.selected !== undefined;
+    case "short": return (state.shortAnswers[page.data.id]?.value || "").trim().length > 0;
+    case "attribution_open": return state.attributionOpen.trim().length > 0;
+    case "attribution_likert": return state.cdsii.every(v=>v !== null);
+    default: return true;
+  }
+}
+
+function updateNavValidity(){
+  const nextBtn = document.getElementById("navNext");
+  const hint = document.getElementById("navHint");
+  if(!nextBtn) return;
+  const ok = isCurrentPageValid();
+  nextBtn.disabled = !ok;
+  if(hint) hint.textContent = ok ? "" : "계속하려면 모든 항목에 응답해 주세요.";
+}
+
+/* ======================================================================
+   내비게이션 바
+   ====================================================================== */
+function renderNav(page){
+  const isLast = currentPage === PAGES.length - 1;
+  const hidePrev = currentPage === 0 || page.type === "failure"; // 21페이지(실패 피드백)는 이전 버튼 제거
+  navEl.innerHTML = `
+    <div class="navbar-inner">
+      ${hidePrev ? "" : `<button class="ghost" id="navPrev">이전</button>`}
+      <div class="spacer"></div>
+      <button class="primary" id="navNext">${isLast ? "완료" : "다음"}</button>
+    </div>
+    <div class="nav-hint" id="navHint"></div>`;
+
+  if(!hidePrev){
+    document.getElementById("navPrev").onclick = ()=>{
+      recordTimeOnCurrentPage();
+      currentPage--;
+      pageEnteredAt = Date.now();
+      render();
+    };
+  }
+  document.getElementById("navNext").onclick = ()=>{
+    if(!isCurrentPageValid()) return;
+    recordTimeOnCurrentPage();
+    if(currentPage === PAGES.length - 1){
+      // review_choice 페이지의 '다음'은 버튼 자체 핸들러로 처리되므로
+      // 여기까지 오는 경우는 없지만 안전장치로 둡니다.
+      return;
+    }
+    currentPage++;
+    pageEnteredAt = Date.now();
+    render();
+  };
+  updateNavValidity();
+}
+
+/* ======================================================================
+   제출
+   ====================================================================== */
+function buildPayload(){
+  const mcScore = Object.values(state.mcAnswers).filter(a=>a.isCorrect).length;
+  const shortScore = Object.values(state.shortAnswers).filter(a=>a.isCorrect).length;
+  return {
+    submittedAt: new Date().toISOString(),
+    studentInfo: state.studentInfo,
+    selfVerbal: state.selfVerbal,
+    mcAnswers: state.mcAnswers,
+    shortAnswers: state.shortAnswers,
+    totalCorrect: mcScore + shortScore,
+    totalItems: CONFIG.MC_TOTAL + CONFIG.SHORT_TOTAL,
+    attributionOpen: state.attributionOpen,
+    cdsii: state.cdsii,
+    reviewedWrongAnswers: state.reviewed
+  };
+}
+
+function finishActivity(){
+  reviewMode = false;
+  state.reviewed = reviewList.length > 0 ? true : state.reviewed;
+  const payload = buildPayload();
+  state.submitted = true;
+  render();
+
+  if(CONFIG.GAS_ENDPOINT && CONFIG.GAS_ENDPOINT.indexOf("https://script.google.com/macros/s/AKfycbzz36geWoyXXPiU7X-VV_Q-pr67YF1aEMK30svybjwDFJ-ErfKdBBU1l-94NhXx4GNA/exec") === -1){
+    fetch(CONFIG.GAS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // GAS CORS 우회를 위해 text/plain 사용
+      body: JSON.stringify(payload)
+    }).catch(err=>{
+      console.error("전송 실패:", err);
+    });
+  } else {
+    console.warn("CONFIG.GAS_ENDPOINT가 설정되지 않아 서버로 전송하지 않았습니다. 아래 데이터를 콘솔에서 확인하세요.");
+    console.log(payload);
+  }
+}
+
+/* ======================================================================
+   시작
+   ====================================================================== */
+render();
+</script>
+</body>
+</html>
