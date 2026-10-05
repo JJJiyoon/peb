@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관리자</title>
+<style>
+  body{font-family:sans-serif; max-width:440px; margin:36px auto; padding:0 16px;}
+  h1{font-size:22px; margin:0 0 16px;}
+  label{display:block; margin:12px 0 4px; font-size:14px;}
+  input{width:100%; box-sizing:border-box; padding:8px; font-size:16px;}
+  button{margin-top:14px; margin-right:8px; padding:8px 14px; font-size:15px; cursor:pointer;}
+  .msg{min-height:1.2em; font-size:14px;}
+  .err{color:#b00000;}
+  a{font-size:14px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const DWELL_KEY = "activityDwellSec";
+const CODE_KEY = "activityCodes";
+const AUTH_KEY = "adminOk";
+const DEFAULTS = { exp:"8142", ctrl:"3657", dwell:120, min:1, max:600 };
+
+function readSettings(){
+  let dwell = DEFAULTS.dwell;
+  let exp = DEFAULTS.exp;
+  let ctrl = DEFAULTS.ctrl;
+  try{
+    const d = localStorage.getItem(DWELL_KEY);
+    if(d != null && d !== "" && Number.isInteger(Number(d)) && Number(d) >= DEFAULTS.min) dwell = Number(d);
+    const raw = localStorage.getItem(CODE_KEY);
+    if(raw){
+      const data = JSON.parse(raw);
+      if(data.exp && data.ctrl){ exp = String(data.exp); ctrl = String(data.ctrl); }
+    }
+  }catch(e){}
+  return { dwell, exp, ctrl };
+}
+
+function renderLogin(message){
+  document.getElementById("app").innerHTML = `
+    <h1>관리자 로그인</h1>
+    <form id="loginForm">
+      <label for="user">아이디</label>
+      <input id="user" name="user" autocomplete="username">
+      <label for="pass">비밀번호</label>
+      <input id="pass" name="pass" type="password" autocomplete="current-password">
+      <p class="msg err">${message || ""}</p>
+      <button type="submit">로그인</button>
+    </form>`;
+  document.getElementById("loginForm").onsubmit = (e)=>{
+    e.preventDefault();
+    const id = document.getElementById("user").value.trim();
+    const pw = document.getElementById("pass").value;
+    if(id === "admin" && pw === "admin"){
+      sessionStorage.setItem(AUTH_KEY, "1");
+      renderSettings("");
+      return;
+    }
+    renderLogin("아이디 또는 비밀번호가 맞지 않습니다.");
+  };
+}
+
+function renderSettings(message, isError){
+  const s = readSettings();
+  document.getElementById("app").innerHTML = `
+    <h1>관리자</h1>
+    <p>이 브라우저에 저장됩니다. 학생 화면을 새로고침하면 반영됩니다.</p>
+    <form id="setForm" novalidate>
+      <label for="dwell">글 화면에 머무는 시간 (초)</label>
+      <input id="dwell" type="number" min="${DEFAULTS.min}" max="${DEFAULTS.max}" step="1" value="${s.dwell}">
+      <p>최소 1초 이상이어야 합니다. 0초는 저장할 수 없습니다.</p>
+      <label for="exp">실험집단 코드</label>
+      <input id="exp" value="${s.exp.replace(/"/g, "&quot;")}">
+      <label for="ctrl">통제집단 코드</label>
+      <input id="ctrl" value="${s.ctrl.replace(/"/g, "&quot;")}">
+      <p class="msg ${isError ? "err" : ""}">${message || ""}</p>
+      <button type="submit">저장</button>
+      <button type="button" id="resetDwell">${DEFAULTS.dwell}초로 되돌리기</button>
+    </form>
+    <p><a href="../index.html">활동 화면으로</a></p>`;
+  document.getElementById("setForm").onsubmit = (e)=>{
+    e.preventDefault();
+    const dwell = Number(document.getElementById("dwell").value);
+    const exp = document.getElementById("exp").value.trim();
+    const ctrl = document.getElementById("ctrl").value.trim();
+    if(document.getElementById("dwell").value.trim() === "" || !Number.isInteger(dwell) || dwell < DEFAULTS.min || dwell > DEFAULTS.max){
+      renderSettings(`대기 시간은 최소 1초 이상이어야 합니다. 1부터 ${DEFAULTS.max}까지의 정수만 저장할 수 있습니다.`, true);
+      return;
+    }
+    if(!exp || !ctrl || exp === ctrl){
+      renderSettings("두 집단 코드는 서로 다르게, 비우지 않고 입력해 주세요.", true);
+      return;
+    }
+    localStorage.setItem(DWELL_KEY, String(dwell));
+    localStorage.setItem(CODE_KEY, JSON.stringify({ exp, ctrl }));
+    renderSettings("저장했습니다.");
+  };
+  document.getElementById("resetDwell").onclick = ()=>{
+    localStorage.setItem(DWELL_KEY, String(DEFAULTS.dwell));
+    renderSettings(`${DEFAULTS.dwell}초로 되돌렸습니다.`);
+  };
+}
+
+if(sessionStorage.getItem(AUTH_KEY) === "1") renderSettings("");
+else renderLogin("");
+</script>
+</body>
+</html>

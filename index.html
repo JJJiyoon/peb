@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수학 학습 활동</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&display=swap">
+<style>
+  /* =====================================================================
+     컨셉: 정돈된 학습지
+     - 한 화면은 헤더 + 본문 + 하단 이동으로 이루어지고, 본문이 카드 높이를 채운다.
+     - 시작·학습·마무리는 깊은 녹색 칠판, 문제·응답·안내는 따뜻한 종이.
+     - 새 화면은 PAGES에 타입을 추가하고 screen()으로 아래 레이아웃 중 하나를 쓴다.
+       screen-split   칠판 + 작업 영역 (정보 입력, 글 읽기, 글쓰기, 선택)
+       screen-quiz    문제 + 늘어나는 선택지
+       screen-scale   문장 + 5점 척도
+       screen-message 안내·결과처럼 한 문장이 화면을 차지하는 화면
+       screen-media   영상. .media-frame 이 남는 높이를 채운다
+       screen-end     종료 칠판
+     - 색을 바꿀 때는 :root 토큰만 고친다.
+     ===================================================================== */
+  :root{
+    color-scheme: light;
+    --bg-a:#e7dfd0;
+    --bg-b:#e3ebe3;
+    --sheet:#f6f1e7;
+    --white:#fffcf8;
+    --ink:#1a2332;
+    --muted:#5e6878;
+    --navy:#1b3352;
+    --navy-soft:#e7eef6;
+    --line:rgba(27,51,82,.12);
+    --line-strong:rgba(27,51,82,.22);
+    --board:#1a4334;
+    --board-2:#123228;
+    --cream:#f3ecdf;
+    --coral:#b55245;
+    --coral-soft:#f8ece8;
+    --moss:#2c6b4e;
+    --moss-soft:#e7f3ec;
+    --shadow:0 28px 70px rgba(48,40,28,.14), 0 2px 8px rgba(48,40,28,.05);
+    --radius:28px;
+    --sans:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --serif:"Nanum Myeongjo","Batang","Apple Myungjo",serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    color:var(--ink);
+    background:
+      radial-gradient(900px 480px at 0% 0%, rgba(255,255,255,.55), transparent 55%),
+      radial-gradient(700px 520px at 100% 100%, rgba(26,67,52,.13), transparent 50%),
+      linear-gradient(165deg, var(--bg-a), var(--bg-b) 58%, #e6ddcf);
+  }
+  button,input,textarea{font-family:inherit; color:inherit;}
+  button{margin:0;}
+  p,h1,h2{margin:0;}
+  ::selection{background:#d7e4f3;}
+
+  .app-bg{
+    height:100dvh;
+    display:grid;
+    place-items:center;
+    padding:20px 24px;
+  }
+  .stage{
+    width:min(1080px,100%);
+    height:min(860px,100%);
+    background:var(--sheet);
+    border:1px solid rgba(27,51,82,.16);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.75);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  .stage-head{flex:0 0 auto; background:rgba(255,252,248,.72);}
+  .stage-head-row{
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:14px 26px 12px;
+  }
+  .brand{display:flex; align-items:center; gap:12px; min-width:0;}
+  .brand strong{font-size:16px; letter-spacing:-.02em; white-space:nowrap;}
+  .section-name{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:500;
+    padding-left:12px;
+    margin-left:2px;
+    border-left:1px solid var(--line-strong);
+    white-space:nowrap;
+  }
+  .step{
+    display:flex;
+    align-items:baseline;
+    gap:4px;
+    font-variant-numeric:tabular-nums;
+    color:var(--muted);
+    font-size:13px;
+    flex:none;
+  }
+  .step b{color:var(--ink); font-size:15px; font-weight:700;}
+  .track{height:3px; background:rgba(27,51,82,.08);}
+  .track span{display:block; height:100%; background:var(--navy);}
+
+  .stage-body{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    padding:20px 24px 18px;
+    overflow:hidden;
+  }
+  .screen{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .stage-foot{
+    flex:none;
+    border-top:1px solid var(--line);
+    background:rgba(255,252,248,.92);
+    padding:14px 22px 16px;
+  }
+  .stage-foot:empty{display:none;}
+  .navbar-inner{display:flex; align-items:center; gap:12px;}
+  .spacer{flex:1;}
+  .nav-hint{font-size:13px; color:var(--coral); font-weight:600;}
+  .nav-hint:empty{display:none;}
+
+  button{
+    font-size:15px;
+    font-weight:650;
+    letter-spacing:-.01em;
+    padding:12px 22px;
+    border-radius:12px;
+    border:1px solid var(--line-strong);
+    background:var(--white);
+    cursor:pointer;
+    transition:background .15s, border-color .15s, transform .12s;
+  }
+  button:hover:not(:disabled){border-color:rgba(27,51,82,.45);}
+  button:active:not(:disabled){transform:translateY(1px);}
+  button:focus-visible,.opt:focus-visible,.scale-btn:focus-within{
+    outline:3px solid rgba(27,51,82,.28);
+    outline-offset:2px;
+  }
+  button.primary{
+    background:var(--navy);
+    border-color:var(--navy);
+    color:#fff;
+    min-width:112px;
+  }
+  button.primary:hover:not(:disabled){background:#243f64;}
+  button.primary.is-waiting{background:#d5dde8; border-color:#d5dde8; color:#fff;}
+  button.primary:disabled{background:#c5d0de; border-color:#c5d0de; color:#fff; cursor:not-allowed;}
+  button.ghost{background:transparent;}
+  button.ghost:disabled{opacity:.4; cursor:not-allowed;}
+
+  .kicker{
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.08em;
+    color:var(--navy);
+  }
+  .lead{font-size:16.5px; line-height:1.7;}
+  .small-note{margin-top:14px; font-size:13.5px; color:var(--muted); line-height:1.55;}
+
+  .board{
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgba(255,255,255,.08), transparent 42%),
+      radial-gradient(80% 70% at 100% 100%, rgba(0,0,0,.18), transparent 46%),
+      linear-gradient(165deg, #215743, var(--board) 42%, var(--board-2));
+    color:var(--cream);
+    border-radius:20px;
+    padding:32px 30px 26px;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    box-shadow:inset 0 0 0 1px rgba(243,236,223,.16), inset 0 -48px 80px rgba(0,0,0,.12);
+  }
+  .board-kicker{color:rgba(243,236,223,.72); letter-spacing:.12em;}
+  .board h1{
+    margin-top:14px;
+    font-family:var(--serif);
+    font-weight:800;
+    font-size:clamp(34px, 4vw, 52px);
+    line-height:1.28;
+    letter-spacing:-.03em;
+  }
+  .board-lead{
+    margin-top:16px;
+    max-width:16em;
+    font-size:15.5px;
+    line-height:1.65;
+    color:rgba(243,236,223,.86);
+  }
+  .board-foot{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+  }
+  .fact{
+    background:rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:12px 12px 11px;
+  }
+  .fact b{
+    display:block;
+    font-size:22px;
+    letter-spacing:-.03em;
+    font-variant-numeric:tabular-nums;
+  }
+  .fact span{display:block; margin-top:2px; font-size:12px; color:rgba(243,236,223,.72);}
+  .chalk{width:min(100%,280px); margin-top:auto; margin-bottom:18px; display:block;}
+  .giant-quote{
+    margin:auto 0 0;
+    font-family:var(--serif);
+    font-size:148px;
+    line-height:.72;
+    color:rgba(243,236,223,.28);
+  }
+
+  .panel{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:20px;
+    min-height:0;
+    min-width:0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .form-panel,.write-panel,.prose{padding:22px 22px 18px; display:flex; flex-direction:column; gap:14px;}
+  .form-panel h2,.write-panel h2,.prose h2{
+    font-size:22px;
+    letter-spacing:-.03em;
+    line-height:1.4;
+  }
+  .form-stack{display:flex; flex-direction:column; gap:12px; flex:1; min-height:0;}
+  .form-note{
+    margin-top:auto;
+    background:var(--sheet);
+    border-radius:14px;
+    padding:14px 16px;
+    color:var(--muted);
+    font-size:13.5px;
+    line-height:1.6;
+  }
+  .form-note.is-error{color:var(--coral);}
+  .code-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .code-actions button{flex:1;}
+  .admin-list{margin:0; padding-left:18px; display:flex; flex-direction:column; gap:4px;}
+  .admin-list b{font-variant-numeric:tabular-nums;}
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label,.field > span{font-size:13px; font-weight:650; color:var(--muted);}
+  .field input[type=text], .field input[type=number], .answer-well input, textarea{
+    width:100%;
+    border:1px solid var(--line-strong);
+    background:var(--white);
+    border-radius:12px;
+    padding:12px 14px;
+    font-size:16px;
+    line-height:1.5;
+    outline:none;
+  }
+  .field input[type=text]{min-height:48px;}
+  textarea{resize:none; min-height:140px;}
+  .field input[type=text]:focus, .answer-well input:focus, textarea:focus{
+    border-color:var(--navy);
+    box-shadow:0 0 0 4px rgba(27,51,82,.12);
+  }
+  .write-panel textarea{flex:1; min-height:180px;}
+
+  .screen-split{
+    display:grid;
+    grid-template-columns:minmax(280px,.94fr) 1.06fr;
+    gap:16px;
+  }
+  .screen-split > *{min-height:0;}
+
+  .lesson-grid{
+    flex:1;
+    min-height:0;
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    gap:16px;
+  }
+  .lesson-grid > *{min-height:0;}
+  .prose{overflow:auto; justify-content:flex-start;}
+  .prose .lead{color:var(--ink);}
+
+  .screen-quiz,.screen-scale{gap:14px;}
+  .quiz-head{flex:none; padding:6px 6px 0;}
+  .question{
+    margin-top:8px;
+    font-size:clamp(22px, 2.4vw, 30px);
+    line-height:1.45;
+    letter-spacing:-.03em;
+    font-weight:700;
+  }
+  .options{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .opt{
+    flex:1 1 0;
+    min-height:56px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 16px;
+    border-radius:14px;
+    background:var(--white);
+    border:1px solid var(--line-strong);
+    cursor:pointer;
+    font-size:17px;
+    line-height:1.45;
+    transition:border-color .15s, background .15s;
+  }
+  .opt:hover{border-color:rgba(27,51,82,.4);}
+  .opt.selected{
+    border-color:var(--navy);
+    background:var(--navy-soft);
+    box-shadow:inset 3px 0 0 var(--navy);
+  }
+  .opt.is-wrong{
+    border-color:var(--coral);
+    background:var(--coral-soft);
+    box-shadow:inset 3px 0 0 var(--coral);
+  }
+  .letter{
+    width:32px; height:32px; flex:none;
+    display:grid; place-items:center;
+    border-radius:50%;
+    border:1px solid var(--line-strong);
+    background:#fff;
+    color:var(--navy);
+    font-size:14px;
+    font-weight:700;
+  }
+  .opt.selected .letter{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .opt.is-wrong .letter{background:var(--coral); color:#fff; border-color:var(--coral);}
+
+  .answer-well{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    padding:36px 28px;
+    text-align:center;
+  }
+  .answer-well input{
+    flex:none;
+    width:min(640px,100%);
+    font-size:32px;
+    text-align:center;
+    letter-spacing:-.03em;
+    min-height:76px;
+    border-radius:16px;
+  }
+
+  .screen-message{min-height:0;}
+  .message-panel{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:42px 48px;
+  }
+  .goal-layout{
+    flex-direction:row;
+    align-items:center;
+    justify-content:flex-start;
+    gap:54px;
+    text-align:left;
+  }
+  .goal-num{flex:none; min-width:180px;}
+  .goal-num strong{
+    display:block;
+    font-family:var(--serif);
+    font-weight:800;
+    font-size:120px;
+    line-height:.82;
+    letter-spacing:-.04em;
+    color:var(--navy);
+  }
+  .goal-num span{
+    display:block;
+    margin-top:10px;
+    font-size:18px;
+    color:var(--muted);
+    font-variant-numeric:tabular-nums;
+  }
+  .goal-copy{max-width:520px;}
+  .goal-copy .lead{font-size:22px; line-height:1.6; letter-spacing:-.02em;}
+  .message-panel.is-alert{align-items:center; text-align:center;}
+  .message-panel .big{
+    max-width:11em;
+    font-family:var(--serif);
+    font-weight:800;
+    font-size:clamp(32px, 4vw, 48px);
+    line-height:1.45;
+    letter-spacing:-.03em;
+    color:var(--coral);
+  }
+  .message-panel.is-alert .kicker{margin-bottom:18px;}
+
+  .quote{
+    flex:none;
+    max-height:92px;
+    overflow:auto;
+    background:var(--navy-soft);
+    border-radius:16px;
+    padding:14px 16px;
+    line-height:1.55;
+  }
+  .scale-list{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .likert-row{
+    flex:1;
+    min-height:84px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:14px 16px;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:16px;
+  }
+  .likert-sentence{flex:1; font-size:16px; line-height:1.5;}
+  .likert-scale{display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end;}
+  .scale-btn{
+    position:relative;
+    width:86px;
+    min-height:64px;
+    border-radius:14px;
+    border:1px solid var(--line-strong);
+    background:var(--white);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    cursor:pointer;
+  }
+  .scale-btn input{position:absolute; opacity:0; pointer-events:none;}
+  .scale-btn .n{font-size:16px; font-weight:750; color:var(--navy);}
+  .scale-btn small{font-size:11px; font-weight:600; color:var(--muted); letter-spacing:-.03em;}
+  .scale-btn:hover{border-color:rgba(27,51,82,.45);}
+  .scale-btn:has(input:checked){background:var(--navy); border-color:var(--navy);}
+  .scale-btn:has(input:checked) .n,
+  .scale-btn:has(input:checked) small{color:#fff;}
+
+  .choice-buttons{display:grid; grid-template-rows:1fr 1fr; gap:12px;}
+  .choice-tile{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:8px;
+    text-align:left;
+    padding:26px 26px;
+    border-radius:18px;
+  }
+  .choice-tile strong{font-size:22px; letter-spacing:-.03em; line-height:1.35;}
+  .choice-tile span{font-size:14.5px; font-weight:500; line-height:1.5;}
+  .choice-tile.primary span{color:rgba(255,255,255,.78);}
+  .choice-tile.ghost{background:var(--white);}
+  .choice-tile.ghost span{color:var(--muted);}
+
+  .banner{
+    flex:none;
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    margin-bottom:12px;
+    padding:10px 12px;
+    border-radius:14px;
+    background:var(--navy-soft);
+    max-height:78px;
+    overflow:auto;
+  }
+  .banner .tag{
+    flex:none;
+    font-size:11px;
+    font-weight:750;
+    color:var(--navy);
+    background:#fff;
+    border-radius:999px;
+    padding:4px 8px;
+  }
+  .banner p{font-size:13.5px; line-height:1.5; color:#24344d;}
+
+  .tag-pill{
+    display:inline-flex;
+    align-items:center;
+    margin-left:8px;
+    padding:3px 8px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    vertical-align:middle;
+  }
+  .tag-pill.wrong{background:var(--coral-soft); color:var(--coral);}
+  .tag-pill.correct{background:var(--moss-soft); color:var(--moss);}
+  .answer-compare{
+    flex:1;
+    min-height:0;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .compare{
+    border-radius:18px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:8px;
+    padding:28px;
+  }
+  .compare span{font-size:13px; font-weight:700;}
+  .compare strong{font-size:clamp(28px, 3vw, 40px); letter-spacing:-.03em; line-height:1.2; word-break:break-word;}
+  .compare.wrong{background:var(--coral-soft); color:var(--coral);}
+  .compare.correct{background:var(--moss-soft); color:var(--moss);}
+
+  .screen-end .board{flex:1;}
+  .board-end{align-items:center; text-align:center;}
+  .board-end .board-copy{margin:auto 0; display:flex; flex-direction:column; align-items:center;}
+  .board-end .board-lead{margin-left:auto; margin-right:auto;}
+  .board-end h1{font-size:clamp(40px, 5vw, 64px);}
+  .books{display:flex; align-items:flex-end; gap:7px; margin-top:8px;}
+  .books i{
+    display:block;
+    width:26px;
+    border-radius:3px 3px 1px 1px;
+    box-shadow:inset -7px 0 rgba(0,0,0,.08);
+  }
+
+  .screen-media{gap:14px;}
+  .media-frame{
+    flex:1;
+    min-height:220px;
+    border-radius:18px;
+    overflow:hidden;
+    background:#141c19;
+    display:grid;
+    place-items:center;
+    color:rgba(243,236,223,.8);
+  }
+  .media-frame img,.media-frame video,.media-frame iframe{width:100%; height:100%; object-fit:cover; border:0;}
+
+  .stage.is-end .stage-head{display:none;}
+  .stage.is-end .stage-body{padding:16px;}
+
+  .gender{display:flex; gap:8px;}
+  .gender-btn{flex:1;}
+  .gender-btn.selected{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+  .read-body p+p{margin-top:14px;}
+  .ideas{display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;}
+  .idea{
+    flex:1; display:flex; gap:12px; align-items:center;
+    background:var(--sheet); border-radius:14px; padding:10px 14px;
+    line-height:1.5;
+  }
+  .idea b{
+    width:28px; height:28px; flex:none; border-radius:50%;
+    display:grid; place-items:center; background:var(--navy); color:#fff; font-size:13px;
+  }
+  .screen-stories{gap:12px;}
+  .story-grid{flex:1; min-height:0; display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .story{padding:22px; display:flex; flex-direction:column; gap:12px; overflow:auto;}
+  .story h2{font-size:22px; letter-spacing:-.03em;}
+  .said{margin-top:auto; background:var(--sheet); border-radius:14px; padding:14px 16px; line-height:1.65;}
+  .prompts{margin:8px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:6px;}
+  .prompts li{line-height:1.55;}
+  .stem{font-size:20px; font-weight:750; letter-spacing:-.03em; line-height:1.45;}
+  .memo{
+    align-self:flex-start; max-width:min(520px,100%);
+    display:flex; gap:10px; align-items:flex-start;
+    margin-bottom:12px; padding:10px 12px; border-radius:14px; background:var(--navy-soft);
+  }
+  .memo .tag{flex:none; font-size:11px; font-weight:750; color:var(--navy); background:#fff; border-radius:999px; padding:4px 8px;}
+  .memo p{font-size:14.5px; line-height:1.5;}
+
+  .scale-page{flex:1; min-height:0; display:flex; flex-direction:column; gap:10px;}
+  .likert6{
+    flex:1; min-height:72px; display:flex; flex-direction:column; justify-content:center; gap:8px;
+    background:var(--white); border:1px solid var(--line); border-radius:16px; padding:12px 16px;
+  }
+  .likert6 p{font-size:15.5px; line-height:1.45;}
+  .scale-block{width:min(440px,100%); margin:0 auto;}
+  .dots{display:flex; justify-content:space-between; gap:6px;}
+  .dot{
+    width:42px; height:42px; border-radius:50%; border:1px solid var(--line-strong);
+    background:#fff; color:var(--navy); font-weight:750; cursor:pointer; padding:0;
+  }
+  .dot.selected{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .scale-ends{display:flex; justify-content:space-between; margin-top:6px; font-size:12px; color:var(--muted);}
+
+  .figure{
+    flex:none; display:flex; align-items:center; justify-content:center;
+    background:#fff; border:1px solid var(--line); border-radius:16px;
+    padding:8px 12px; max-height:168px; overflow:hidden;
+  }
+  .figure img{max-width:100%; max-height:148px; object-fit:contain;}
+  .screen-quiz .opt{min-height:48px; flex:1 1 44px;}
+  .timer-pill{
+    font-variant-numeric:tabular-nums; font-weight:750; color:var(--navy);
+    background:var(--navy-soft); border-radius:999px; padding:10px 16px;
+  }
+  #modalRoot:empty{display:none;}
+  .modal-back{
+    position:fixed; inset:0; z-index:40; background:rgba(23,32,28,.46);
+    display:grid; place-items:center; padding:24px;
+  }
+  .modal{
+    width:min(460px,100%); background:var(--sheet); border-radius:22px;
+    padding:32px 24px 20px; box-shadow:var(--shadow); text-align:center;
+  }
+  .modal .msg{font-family:var(--serif); font-weight:800; font-size:34px; letter-spacing:-.03em; line-height:1.35;}
+  .modal-actions{display:flex; justify-content:space-between; gap:10px; margin-top:26px;}
+  .modal-actions.end{justify-content:flex-end;}
+
+  @media (max-width:860px){
+    .app-bg{height:auto; min-height:100dvh; display:block; padding:12px;}
+    .stage{height:auto; min-height:calc(100dvh - 24px);}
+    .stage-body{overflow:visible;}
+    .screen{overflow:visible;}
+    .screen-split,.lesson-grid,.answer-compare,.story-grid{grid-template-columns:1fr;}
+    .goal-layout{flex-direction:column; align-items:flex-start; gap:18px; padding:28px 22px;}
+    .goal-num strong{font-size:84px;}
+    .likert-row{flex-direction:column; align-items:stretch;}
+    .likert-scale{justify-content:flex-start;}
+    .section-name{display:none;}
+    .board{min-height:240px;}
+    .choice-buttons{min-height:280px;}
+  }
+</style>
+</head>
+<body>
+<div class="app-bg">
+  <div class="stage" id="stage">
+    <header class="stage-head" id="stageHead"></header>
+    <main class="stage-body" id="app"></main>
+    <footer class="stage-foot" id="navbar"></footer>
+  </div>
+</div>
+<div id="modalRoot"></div>
+
+<script>
+/* ======================================================================
+   설정
+   - 입장 코드는 학생 화면에 집단 이름을 보여 주지 않습니다.
+   - 대기 시간과 집단 코드는 /admin 에서 이 브라우저에 저장합니다.
+   - 정답이 null 인 문제는 원본 문서에서 숫자·보기가 빠져 응답만 기록합니다.
+   ====================================================================== */
+const CONFIG = {
+  GAS_ENDPOINT: "https://script.google.com/macros/s/AKfycbwurvMWE7H6GZqEcqmP796c3RllDO0K60im3gu_5o7igiFmf2M3wE9iA01dsSb7wZTd/exec",
+  PASS_THRESHOLD: 8,
+  DWELL_MS: 2 * 60 * 1000,
+  DWELL_DEFAULT_SEC: 120,
+  DWELL_MAX_SEC: 600,
+  CODES: { exp:"8142", ctrl:"3657" }
+};
+const DWELL_STORE_KEY = "activityDwellSec";
+const CODE_STORE_KEY = "activityCodes";
+
+const IMG = "ref/수학문제image/";
+
+const CHECK_ITEMS = [
+  { id:"m1", text:"수학 문제를 풀다가 틀렸을 때, 나는 무엇을 더 배워야 하는지 알 수 있다." },
+  { id:"m2", text:"수학 문제를 풀다가 틀렸을 때, 나는 무엇을 이해하지 못했는지 알 수 있다." },
+  { id:"m3", text:"틀린 수학 문제를 살펴보면, 다음에 무엇을 공부해야 하는지 알 수 있다." },
+  { id:"m4", text:"틀린 문제는 다음 수학 학습에 유용하고 쓸모있는 정보가 될 수 있다." },
+  { id:"m5", text:"수학 문제를 풀다가 틀려도, 틀린 문제에서 배울 점을 찾을 수 있다." }
+];
+
+const POST_A = [
+  { id:"a1", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 나는 여전히 수학을 공부할 생각이 있다." },
+  { id:"a2", text:"이번 수학 활동에서 문제를 풀다가 실수했지만, 그만두지 않고 계속해서 문제를 풀고자 했다." },
+  { id:"a3", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 수학은 여전히 즐겁다." },
+  { id:"a4", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 수학 수업은 여전히 즐거울 것이다." },
+  { id:"a5", text:"이번 수학 활동에서 문제를 풀다가 실수했어도, 수학 공부를 계속하고 싶은 마음이 든다." }
+];
+
+const POST_B = [
+  { id:"b1", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 다음번에는 더 열심히 해야겠다는 마음이 들었다." },
+  { id:"b2", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 다음에는 더 잘 준비해야 한다는 것을 느꼈다." },
+  { id:"b3", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 왜 틀렸는지 이해하려고 노력했다." },
+  { id:"b4", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 어떻게 하면 다음에 더 잘할 수 있을지 자세히 알아보려고 노력했다." }
+];
+
+const POST_C = [
+  { id:"b5", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 다음에 어떤 부분에 노력을 기울여야 하는지 알게 됐다." },
+  { id:"b6", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 어떤 부분에서 실수했는지 생각했다." },
+  { id:"b7", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 내가 더 발전시켜야 할 부분을 알려줬다." }
+];
+
+/* 그림 파일은 문제 내용에 맞게 연결했습니다.
+   image02는 거의 검은 화면이라 넣지 않았고, image04·13·14·15는 폴더에 없습니다.
+   image06은 쌓기나무 직육면체, image07은 막대, image11은 평행사변형, image12는 쌓기나무 입체입니다. */
+const PROBLEMS = [
+  { id:"q1", no:1, kind:"mc", image:"image01.png",
+    question:"입체도형은 평면도형보다 몇 개 더 많은가요?",
+    options:["1개","2개","3개","4개","5개"], answerIndex:3 },
+  { id:"q2", no:2, kind:"short", image:null,
+    question:"빈칸에 알맞은 수를 순서대로 구한 것을 적어 주세요.",
+    answer:null },
+  { id:"q3", no:3, kind:"short", image:"image03.png",
+    question:"□ 안에 알맞은 수를 써넣으세요.",
+    answer:"3175" },
+  { id:"q4", no:4, kind:"short", image:"image05.png",
+    question:"□ 안에 알맞은 말을 써넣으세요. 한 모서리의 길이가 □인 정육면체의 부피를 □라 쓰고, □(이)라고 읽습니다.",
+    answer:null },
+  { id:"q5", no:5, kind:"short", image:"image06.png",
+    question:"쌓기나무의 수를 세어 직육면체의 부피를 구해 보세요.",
+    answer:"64" },
+  { id:"q6", no:6, kind:"short", image:"image07.png",
+    question:"길이가 □인 막대를 똑같이 □도막으로 나누려고 합니다. 한 도막의 길이는 몇 □로 해야 하는지 구해 보세요.",
+    answer:null },
+  { id:"q7", no:7, kind:"short", image:null,
+    question:"물 □를 학생 □명이 똑같이 나누어 마셨습니다. 학생 한 명이 마신 물은 몇 □인지 분수로 나타내 보세요.",
+    answer:null },
+  { id:"q8", no:8, kind:"short", image:null,
+    question:"○ 안에 알맞은 말을 써넣으세요.",
+    answer:null },
+  { id:"q9", no:9, kind:"short", image:"image09.png",
+    question:"다음 전개도를 보고 접었을 때 면 ㉣과 평행한 면을 고르세요. 면 ( )",
+    answer:null },
+  { id:"q10", no:10, kind:"short", image:"image10.png",
+    question:"자연수의 나눗셈을 이용하여 ㉠에 알맞은 수를 써넣으세요.",
+    answer:"2.14" },
+  { id:"q11", no:11, kind:"mc", image:null,
+    question:"기호를 몫이 큰 순서로 알맞게 나열한 것을 고르세요.",
+    options:["㉠, ㉡, ㉢","㉠, ㉢, ㉡","㉡, ㉠, ㉢","㉡, ㉢, ㉠","㉢, ㉡, ㉠"],
+    answerIndex:null },
+  { id:"q13", no:13, kind:"short", image:"image11.png",
+    question:"넓이가 □인 평행사변형의 높이가 □일 때, 밑변의 길이는 몇 □인지 구해 보세요.",
+    answer:null },
+  { id:"q14", no:14, kind:"short", image:null,
+    question:"넓이가 □인 텃밭에 옥수수를 □만큼 심었습니다. 전체 텃밭의 넓이에 대한 옥수수를 심은 넓이의 비율을 백분율로 나타내 보세요.",
+    answer:null },
+  { id:"q15", no:15, kind:"short", image:"image12.png",
+    question:"다음 그림에서 쌓기나무 한 개의 부피가 □일 때, 입체도형의 부피는 몇 □인지 구해 보세요. (단, 밑면에 놓인 쌓기나무는 □개입니다.)",
+    answer:null }
+];
+
+const state = {
+  group: null,
+  groupLocked: false,
+  studentInfo: { school:"", grade:"", classroom:"", name:"", gender:"" },
+  summary: "",
+  sentence: "",
+  scales: {},
+  math: {},
+  dwellMs: {},
+  pageMs: {},
+  retryLog: {},
+  startedAt: null,
+  didRetry: false,
+  submitted: false
+};
+
+let PAGES = [];
+let currentPage = 0;
+let pageEnteredAt = Date.now();
+let showHint = false;
+let dwellTimer = null;
+let retryMode = false;
+let retryList = [];
+let retryIndex = 0;
+let retryDraft = {};
+let retryStampIndex = -1;
+let retryEnteredAt = 0;
+
+const stageEl = document.getElementById("stage");
+const headEl = document.getElementById("stageHead");
+const appEl = document.getElementById("app");
+const navEl = document.getElementById("navbar");
+const modalRoot = document.getElementById("modalRoot");
+
+const MARK = `<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="#1a4334"/><path d="M9.5 10.5h6.4c.8 1.5 1.8 1.5 2.6 0H24.5V24H18c-.8 1.4-1.8 1.4-2.6 0H9.5V10.5z" fill="none" stroke="#f3ecdf" stroke-width="1.5" stroke-linejoin="round"/><path d="M17 11.4v12.2" stroke="#f3ecdf" stroke-width="1.4"/></svg>`;
+const CHALK_LINE = `<svg class="chalk" viewBox="0 0 320 84" aria-hidden="true" fill="none"><path d="M8 58C48 18 78 72 128 42s78-28 184 8" stroke="rgba(243,236,223,.55)" stroke-width="2" stroke-linecap="round"/><circle cx="36" cy="52" r="3.5" fill="rgba(243,236,223,.85)"/><circle cx="132" cy="40" r="3.5" fill="rgba(243,236,223,.85)"/><circle cx="250" cy="46" r="3.5" fill="rgba(243,236,223,.75)"/></svg>`;
+
+function learnPages(group){
+  const exp = group === "exp";
+  const stem = exp
+    ? "틀린 문제로부터 배울 수 있는 이유는"
+    : "안전한 미디어 사용이 나를 지키는 데 도움이 되는 이유는";
+  const pages = exp ? [
+    { type:"read", id:"exp-read", label:"학습 내용", dwell:true,
+      kicker:"학습 내용", title:"문제를 풀 때<br>생길 수 있는 실수",
+      paragraphs:[
+        "새로운 수학 내용을 배우거나 어려운 문제를 풀 때에는 문제를 틀릴 수 있습니다. 틀린 문제는 내가 배우고 이해한 내용에서 무엇을 확인해야 하는지, 문제 풀이 과정에서 무엇을 확인해야 하는지 알려줍니다. 틀린 문제에 담긴 정보를 살펴보면, 내가 충분히 이해하지 못한 부분을 알려주기도 하고 또는 내가 풀이방법을 잘못 적용했다는 것을 알려주기도 합니다. 그래서 틀린 문제는 단순히 실패했다는 결과가 아니며, 이후 학습에 활용할 수 있는 유용한 정보가 될 수 있습니다.",
+        "새로운 것을 배우는 동안 실수가 생기는 일은 흔합니다. 내가 다 아는 쉬운 문제에서는 실수가 일어나지 않습니다. 실수는 너무 쉽지도 너무 어렵지도 않은 문제를 풀고 있다는 신호일 수 있습니다."
+      ] },
+    { type:"expert", id:"exp-expert", label:"전문가의 조언", dwell:true,
+      kicker:"전문가의 조언", title:"다섯 가지<br>핵심 생각",
+      advice:"새로운 내용을 배우는 동안 실수가 생기는 것은 특별한 일이 아닙니다. 실수는 지금의 생각이나 풀이에서 더 살펴볼 부분을 보여 줄 수 있습니다. 실수는 개선할 곳을 드러내어 학습 과정을 안내하는 정보가 됩니다. 그래서 실수는 가치 있는 학습 기회가 될 수 있습니다.",
+      ideas:[
+        "틀린 문제는 중요한 정보를 알려 줍니다.",
+        "틀린 문제는 나아지는 데 도움을 줄 수 있습니다.",
+        "틀린 문제는 아직 더 배울 수 있는 것을 보여 줍니다.",
+        "문제를 풀고 나서 문제가 맞았는지·틀렸는지 아는 것은 내가 더 배울 수 있는 정보를 줍니다.",
+        "문제를 틀리는 것은 배움의 자연스러운 일부입니다."
+      ] },
+    { type:"stories", id:"exp-stories", label:"이야기", dwell:true,
+      kicker:"이야기", title:"두 친구의<br>이야기",
+      people:[
+        { name:"지우의 이야기", body:"분수 덧셈 문제를 푸는 문제에서, 지우는 분모끼리도 더하면 된다고 생각했습니다. 풀이를 보며 자신의 생각이 분수 덧셈의 원리와 다르다는 것을 알게 되었습니다.", said:"수학 문제를 풀고 틀렸기 때문에 내가 헷갈리는 부분을 알게 되었어. 문제를 틀린 과정이 있어서 분수의 원리를 더 정확하게 알게 됐어." },
+        { name:"도윤의 이야기", body:"소수의 덧셈 문제를 푸는 문제에서, 도윤이의 답은 정답과 달랐습니다. 도윤이는 자신의 풀이과정과 정답의 풀이과정(해설)을 비교해보았고, 도윤이는 자신이 여태 소수점을 맞추는 방법을 다르게 생각했다는 것을 알게 되었습니다.", said:"나의 풀이는 내가 어떤 방법을 다르게 생각했는지 알려 줬어. 문제를 틀려서 내가 어느 부분에서 다르게 풀었는지 이해할 수 있는 부분을 보여 줄 수 있어." }
+      ] },
+    { type:"summary", id:"exp-summary", label:"요약하기", dwell:true,
+      kicker:"요약하기", title:"배운 내용을<br>요약하기",
+      lead:"위에서 읽은 내용을 떠올리며 아래 두 가지를 모두 포함하여 2–4문장으로 써 보세요.",
+      prompts:["왜 실수는 학습의 자연스러운 일부일 수 있나요?","실수는 개인이 나아지는 데 어떻게 도움을 줄 수 있나요?"] },
+    { type:"sentence", id:"exp-sentence", label:"한 문장", dwell:true, stem }
+  ] : [
+    { type:"read", id:"ctrl-read", label:"학습 내용", dwell:true,
+      kicker:"학습 내용", title:"미디어를<br>안전하게 사용하기",
+      paragraphs:[
+        "태블릿이나 휴대전화를 사용할 때에는 안전한 사용 방법을 알아두는 것이 좋습니다. 화면을 오래 보면 눈과 몸이 피곤해질 수 있어, 사용하는 시간을 정해 두는 것이 도움이 될 수 있습니다. 인터넷에서 본 정보가 모두 맞는 것은 아니므로, 정보가 어디에서 왔는지 살펴볼 필요가 있습니다. 미디어는 믿을 수 있는 어른의 도움과 함께 사용하면 더 안전합니다. 화면을 볼 때에는 주변이 안전한 장소인지 살펴보고, 불편한 느낌이 들면 가까운 어른에게 이야기하는 것도 좋습니다.",
+        "안전한 미디어 사용은 일상생활에서 자신을 지키는 방법입니다."
+      ] },
+    { type:"expert", id:"ctrl-expert", label:"전문가의 조언", dwell:true,
+      kicker:"전문가의 조언", title:"다섯 가지<br>안전 사용 생각",
+      advice:"미디어를 사용할 때에는 화면을 보는 시간, 정보가 온 곳, 도움을 줄 수 있는 어른이 있는지를 생각하는 것이 중요합니다. 이런 정보는 미디어를 안전하게 사용하는 데 도움이 됩니다. 안전하게 사용하는 방법을 알면 일상생활에서 자신을 보호하는 데 도움이 될 수 있습니다.",
+      ideas:[
+        "화면을 보는 시간은 정해 두면 좋습니다.",
+        "인터넷에서 본 정보는 출처(정보가 처음 나온 곳)를 살펴볼 수 있습니다.",
+        "잘 모르는 내용은 바로 믿지 않습니다.",
+        "미디어는 믿을 수 있는 어른의 도움과 함께 사용합니다.",
+        "안전한 미디어 사용은 일상생활의 자연스러운 일부입니다."
+      ] },
+    { type:"stories", id:"ctrl-stories", label:"이야기", dwell:true,
+      kicker:"이야기", title:"두 친구의<br>이야기",
+      people:[
+        { name:"지우의 이야기", body:"지우는 태블릿으로 영상을 볼 때 화면을 보는 시간을 정해 두었습니다. 영상을 본 뒤에는 눈을 쉬게 하는 시간을 가졌습니다.", said:"처음부터 시간을 정해 두니까 다른 활동을 할 시간도 알 수 있었어. 화면을 보는 시간을 정하는 것이 나를 돌보는 데 도움이 됐어." },
+        { name:"도윤의 이야기", body:"도윤은 인터넷에서 재미있는 정보를 보았습니다. 그 정보가 어디에서 나온 것인지 잘 알 수 없어서, 믿을 수 있는 어른과 함께 출처를 살펴보았습니다.", said:"인터넷의 정보는 출처를 살펴보는 것이 안전한 사용에 도움이 된다는 것을 알았어." }
+      ] },
+    { type:"summary", id:"ctrl-summary", label:"정리하기", dwell:true,
+      kicker:"정리하기", title:"내 말로<br>정리하기",
+      lead:"위에서 읽은 내용을 떠올리며 아래 두 가지를 모두 포함하여 2–4문장으로 써 보세요.",
+      prompts:["왜 안전한 미디어 사용은 일상생활의 자연스러운 일부인가요?","안전한 미디어 사용은 자신을 지키는 데 어떻게 도움을 줄 수 있나요?"] },
+    { type:"sentence", id:"ctrl-sentence", label:"한 문장", dwell:true, stem }
+  ];
+  if(exp){
+    pages.push({ type:"scale", id:"check", label:"질문", dwell:true, memo:false,
+      kicker:"질문", title:"다음 문장을 읽고 해당하는 곳에 표시해 주세요.", items:CHECK_ITEMS });
+  }
+  return pages;
+}
+
+function buildPages(group){
+  return [
+    { type:"info", id:"info", label:"시작" },
+    ...learnPages(group),
+    { type:"goal", id:"goal", label:"목표 안내", memo:true },
+    ...PROBLEMS.map((p,i)=>({ type:"problem", id:p.id, data:p, index:i, label:`문제 ${p.no}`, memo:true })),
+    { type:"scale", id:"post1", label:"돌아보기", kicker:"돌아보기", title:"오늘 수학 활동을 떠올리며 표시해 주세요.", items:POST_A, memo:true },
+    { type:"scale", id:"post2", label:"돌아보기", kicker:"돌아보기", title:"오늘 수학 활동을 떠올리며 표시해 주세요.", items:POST_B, memo:true },
+    { type:"scale", id:"post3", label:"돌아보기", kicker:"돌아보기", title:"오늘 수학 활동을 떠올리며 표시해 주세요.", items:POST_C, memo:true },
+    { type:"finish", id:"finish", label:"마무리", memo:true }
+  ];
+}
+
+function screen(className, inner){
+  return `<div class="screen ${className}">${inner}</div>`;
+}
+function bookRow(){
+  const books = [["46px","#e7d7b4"],["66px","#c45c4a"],["52px","#f3ecdf"],["74px","#1b3352"],["40px","#8ea894"],["58px","#e2c07a"]];
+  return `<div class="books" aria-hidden="true">${books.map(([h,c])=>`<i style="height:${h};background:${c}"></i>`).join("")}</div>`;
+}
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.innerText = str == null ? "" : String(str);
+  return d.innerHTML;
+}
+function normAnswer(s){
+  return String(s||"").trim().toLowerCase().replace(/[\s,]/g,"").replace(/개|cm³|cm3|㎤|세제곱센티미터/g,"");
+}
+function grade(problem, saved){
+  if(!saved) return null;
+  if(problem.kind==="mc"){
+    if(problem.answerIndex==null || saved.selected==null) return null;
+    return saved.selected === problem.answerIndex;
+  }
+  if(problem.answer==null) return null;
+  if(!String(saved.value||"").trim()) return null;
+  return normAnswer(saved.value) === normAnswer(problem.answer);
+}
+function sentenceStem(){
+  const page = PAGES.find(p=>p.type==="sentence");
+  return page ? page.stem : "";
+}
+function formatClock(ms){
+  const s = Math.max(0, Math.ceil(ms/1000));
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+}
+function dwellLeft(page){
+  if(!page?.dwell) return 0;
+  const saved = state.dwellMs[page.id] || 0;
+  const live = Date.now() - pageEnteredAt;
+  return Math.max(0, CONFIG.DWELL_MS - saved - live);
+}
+
+function renderChrome(current, total, title){
+  const pct = total ? Math.max(4, Math.round(current/total*100)) : 0;
+  headEl.innerHTML = `
+    <div class="stage-head-row">
+      <div class="brand">
+        <span class="mark">${MARK}</span>
+        <strong>수학 학습 활동</strong>
+        <span class="section-name">${escapeHtml(title||"")}</span>
+      </div>
+      <div class="step"><b>${String(current).padStart(2,"0")}</b><span>/ ${String(total).padStart(2,"0")}</span></div>
+    </div>
+    <div class="track"><span style="width:${pct}%"></span></div>`;
+}
+
+function memoHtml(page){
+  if(!page?.memo || !state.sentence.trim()) return "";
+  return `<aside class="memo"><span class="tag">내가 쓴 문장</span><p>${escapeHtml(sentenceStem())} ${escapeHtml(state.sentence.trim())}</p></aside>`;
+}
+
+function figureHtml(file){
+  if(!file) return "";
+  return `<div class="figure"><img src="${IMG}${file}" alt=""></div>`;
+}
+
+function closeModal(){ modalRoot.innerHTML = ""; }
+
+function render(){
+  clearInterval(dwellTimer);
+  closeModal();
+  stageEl.classList.remove("is-end");
+  if(!state.group){ renderCode(); return; }
+  if(retryMode){ renderRetry(); return; }
+  if(state.submitted){ renderSubmitScreen(); return; }
+  const page = PAGES[currentPage];
+  stageEl.dataset.screen = page.type;
+  renderChrome(currentPage+1, PAGES.length, page.label);
+  let html = memoHtml(page);
+  switch(page.type){
+    case "info": html += renderInfo(); break;
+    case "read": html += renderRead(page); break;
+    case "expert": html += renderExpert(page); break;
+    case "stories": html += renderStories(page); break;
+    case "summary": html += renderSummary(page); break;
+    case "sentence": html += renderSentence(page); break;
+    case "scale": html += renderScale(page); break;
+    case "goal": html += renderGoal(); break;
+    case "problem": html += renderProblem(page.data, state.math[page.data.id], false); break;
+    case "finish": html += renderFinish(); break;
+  }
+  appEl.innerHTML = html;
+  attachPageEvents(page);
+  renderNav(page);
+}
+
+function dwellSeconds(){
+  return Math.round(CONFIG.DWELL_MS / 1000);
+}
+function dwellLabel(){
+  const sec = dwellSeconds();
+  if(sec > 0 && sec % 60 === 0) return `${sec / 60}분`;
+  return `${sec}초`;
+}
+function loadCodes(){
+  try{
+    const raw = localStorage.getItem(CODE_STORE_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    const exp = data && String(data.exp || "").trim();
+    const ctrl = data && String(data.ctrl || "").trim();
+    if(exp && ctrl && exp !== ctrl){
+      CONFIG.CODES.exp = exp;
+      CONFIG.CODES.ctrl = ctrl;
+    }
+  }catch(e){}
+}
+function loadDwell(){
+  try{
+    const raw = localStorage.getItem(DWELL_STORE_KEY);
+    if(raw == null || raw === "") return;
+    applyDwell(Number(raw), false);
+  }catch(e){}
+}
+function applyDwell(sec, persist){
+  if(!Number.isInteger(sec) || sec < 1 || sec > CONFIG.DWELL_MAX_SEC) return false;
+  CONFIG.DWELL_MS = sec * 1000;
+  if(persist){
+    try{ localStorage.setItem(DWELL_STORE_KEY, String(sec)); }catch(e){}
+  }
+  return true;
+}
+
+function renderCode(){
+  stageEl.dataset.screen = "group";
+  renderChrome(1, 1, "시작");
+  appEl.innerHTML = screen("screen-split", `
+    <section class="board">
+      <p class="board-kicker">수학 학습 활동</p>
+      <h1>활동 코드를<br>입력해 주세요</h1>
+      <p class="board-lead">선생님께 받은 코드를 입력하면<br>활동이 시작됩니다.</p>
+      ${CHALK_LINE}
+    </section>
+    <section class="panel form-panel">
+      <div>
+        <p class="kicker">입장</p>
+        <h2>코드를 입력해 주세요</h2>
+      </div>
+      <div class="form-stack">
+        <div class="field">
+          <label for="f_code">활동 코드</label>
+          <input type="text" id="f_code" autocomplete="off" inputmode="numeric" spellcheck="false" placeholder="코드 입력">
+        </div>
+        <p class="form-note" id="codeHint">코드가 맞으면 활동이 시작됩니다.</p>
+        <button type="button" class="primary" id="btnCode">시작하기</button>
+      </div>
+    </section>`);
+  navEl.innerHTML = "";
+  const input = document.getElementById("f_code");
+  const go = ()=>submitCode(input.value);
+  document.getElementById("btnCode").onclick = go;
+  input.addEventListener("keydown", (e)=>{ if(e.key === "Enter") go(); });
+  input.focus();
+}
+
+function submitCode(raw){
+  loadCodes();
+  const code = String(raw || "").trim();
+  if(code === CONFIG.CODES.exp){ chooseGroup("exp"); return; }
+  if(code === CONFIG.CODES.ctrl){ chooseGroup("ctrl"); return; }
+  const hint = document.getElementById("codeHint");
+  if(hint){
+    hint.textContent = "코드를 다시 확인해 주세요.";
+    hint.classList.add("is-error");
+  }
+}
+
+function chooseGroup(group){
+  state.group = group;
+  if(!state.startedAt) state.startedAt = Date.now();
+  currentPage = 0;
+  pageEnteredAt = Date.now();
+  showHint = false;
+  PAGES = buildPages(group);
+  render();
+}
+
+function renderInfo(){
+  const s = state.studentInfo;
+  return screen("screen-split", `
+    <section class="board">
+      <p class="board-kicker">수학 학습 활동</p>
+      <h1>오늘의 수업이<br>시작됩니다</h1>
+      <p class="board-lead">시작하기 전에<br>오른쪽 정보를 입력해 주세요.</p>
+      ${CHALK_LINE}
+      <div class="board-foot">
+        <div class="fact"><b>${PROBLEMS.length}</b><span>수학 문제</span></div>
+        <div class="fact"><b>${CONFIG.PASS_THRESHOLD}</b><span>목표 정답</span></div>
+        <div class="fact"><b>${dwellLabel()}</b><span>글 읽는 시간</span></div>
+      </div>
+    </section>
+    <section class="panel form-panel">
+      <div>
+        <p class="kicker">참여자 정보</p>
+        <h2>기본 정보를 입력해 주세요</h2>
+      </div>
+      <div class="form-stack">
+        <div class="field"><label for="f_school">학교</label><input type="text" id="f_school" autocomplete="off" value="${escapeHtml(s.school)}" placeholder="예: 한빛초등학교"></div>
+        <div class="field"><label for="f_grade">학년</label><input type="text" id="f_grade" autocomplete="off" value="${escapeHtml(s.grade)}" placeholder="예: 5학년"></div>
+        <div class="field"><label for="f_classroom">반</label><input type="text" id="f_classroom" autocomplete="off" value="${escapeHtml(s.classroom)}" placeholder="예: 3반"></div>
+        <div class="field"><label for="f_name">이름</label><input type="text" id="f_name" autocomplete="off" value="${escapeHtml(s.name)}" placeholder="예: 홍길동"></div>
+        <div class="field">
+          <span id="genderLabel">성별</span>
+          <div class="gender" role="group" aria-labelledby="genderLabel">
+            ${["남자","여자"].map(g=>`<button type="button" class="gender-btn ${s.gender===g?"selected":""}" data-g="${g}">${g}</button>`).join("")}
+          </div>
+        </div>
+        <p class="form-note">학교, 학년, 반, 이름, 성별을 모두 적어야 다음으로 갈 수 있습니다.</p>
+      </div>
+    </section>`);
+}
+
+function renderRead(page){
+  return screen("screen-split", `
+    <section class="board">
+      <p class="board-kicker">${escapeHtml(page.kicker)}</p>
+      <h1>${page.title}</h1>
+      <p class="board-lead">천천히 읽고 다음으로 이동해 주세요.</p>
+      ${CHALK_LINE}
+    </section>
+    <section class="panel prose"><div class="read-body lead">${page.paragraphs.map(p=>`<p>${escapeHtml(p)}</p>`).join("")}</div></section>`);
+}
+
+function renderExpert(page){
+  return screen("screen-split", `
+    <section class="board">
+      <p class="board-kicker">${escapeHtml(page.kicker)}</p>
+      <h1>${page.title}</h1>
+      <p class="board-lead">오른쪽 다섯 가지를 기억해 주세요.</p>
+      ${CHALK_LINE}
+    </section>
+    <section class="panel prose">
+      <p class="lead">${escapeHtml(page.advice)}</p>
+      <div class="ideas">
+        ${page.ideas.map((t,i)=>`<div class="idea"><b>${i+1}</b><span>${escapeHtml(t)}</span></div>`).join("")}
+      </div>
+    </section>`);
+}
+
+function renderStories(page){
+  return screen("screen-stories", `
+    <div class="quiz-head">
+      <p class="kicker">${escapeHtml(page.kicker)}</p>
+      <h2>두 친구의 이야기</h2>
+    </div>
+    <div class="story-grid">
+      ${page.people.map(p=>`
+        <article class="panel story">
+          <h2>${escapeHtml(p.name)}</h2>
+          <p class="lead">${escapeHtml(p.body)}</p>
+          <p class="said">“${escapeHtml(p.said)}”</p>
+        </article>`).join("")}
+    </div>`);
+}
+
+function renderSummary(page){
+  return screen("screen-split", `
+    <section class="board">
+      <p class="board-kicker">${escapeHtml(page.kicker)}</p>
+      <h1>${page.title}</h1>
+      <p class="board-lead">두 질문을 모두 담아<br>2–4문장으로 적어 주세요.</p>
+      ${CHALK_LINE}
+    </section>
+    <section class="panel write-panel">
+      <p class="lead">${escapeHtml(page.lead)}</p>
+      <ul class="prompts">${page.prompts.map(q=>`<li>${escapeHtml(q)}</li>`).join("")}</ul>
+      <textarea id="f_summary" placeholder="여기에 2–4문장으로 적어 주세요.">${escapeHtml(state.summary)}</textarea>
+    </section>`);
+}
+
+function renderSentence(page){
+  return screen("screen-split", `
+    <section class="board">
+      <p class="board-kicker">한 문장</p>
+      <h1>내가 기억하고 싶은<br>한 문장</h1>
+      <p class="board-lead">이 문장은 다음 활동 동안<br>화면 왼쪽 위에 남습니다.</p>
+      ${CHALK_LINE}
+    </section>
+    <section class="panel write-panel">
+      <p class="stem">${escapeHtml(page.stem)}</p>
+      <textarea id="f_sentence" class="sentence-input" placeholder="이어질 한 문장을 적어 주세요.">${escapeHtml(state.sentence)}</textarea>
+      <p class="small-note">내가 쓴 문장은 다음 활동 동안 화면 왼쪽 위에 계속 보입니다.</p>
+    </section>`);
+}
+
+function renderScale(page){
+  return screen("screen-scale", `
+    <div class="quiz-head">
+      <p class="kicker">${escapeHtml(page.kicker||"질문")}</p>
+      <h2 class="question">${escapeHtml(page.title)}</h2>
+    </div>
+    <div class="scale-page">
+      ${page.items.map(item=>{
+        const picked = state.scales[item.id];
+        return `<div class="likert6">
+          <p>${escapeHtml(item.text)}</p>
+          <div class="scale-block">
+            <div class="dots">
+              ${[1,2,3,4,5,6].map(n=>`<button type="button" class="dot ${picked===n?"selected":""}" data-scale="${item.id}" data-v="${n}" aria-label="${n}점">${n}</button>`).join("")}
+            </div>
+            <div class="scale-ends"><span>전혀 그렇지 않다</span><span>매우 그렇다</span></div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`);
+}
+
+function renderGoal(){
+  return screen("screen-message", `
+    <div class="message-panel goal-layout">
+      <div class="goal-num"><strong>${CONFIG.PASS_THRESHOLD}</strong><span>/ ${PROBLEMS.length}</span></div>
+      <div class="goal-copy">
+        <p class="kicker">목표 안내</p>
+        <p class="lead">목표 기준은 ${PROBLEMS.length}문제 중 ${CONFIG.PASS_THRESHOLD}문제 이상 정답을 맞추는 것입니다. 목표 기준에 도달하도록 문제를 풀어보세요.</p>
+        <p class="small-note">준비가 되면 아래 다음 버튼을 눌러 이동하세요.</p>
+      </div>
+    </div>`);
+}
+
+function renderProblem(item, saved, fresh){
+  const letters = ["1","2","3","4","5"];
+  const selected = !fresh && saved ? saved.selected : null;
+  const value = !fresh && saved ? (saved.value||"") : (fresh ? (retryDraft[item.id]||"") : "");
+  const options = item.kind==="mc" ? `
+    <div class="options">
+      ${item.options.map((opt,i)=>`
+        <div class="opt ${selected===i?"selected":""}" data-idx="${i}" role="button" tabindex="0">
+          <span class="letter">${letters[i]}</span><span>${escapeHtml(opt)}</span>
+        </div>`).join("")}
+    </div>` : `
+    <div class="panel answer-well">
+      <label class="kicker" for="f_answer">정답을 입력하세요</label>
+      <input type="text" id="f_answer" autocomplete="off" value="${escapeHtml(value)}" placeholder="답 입력">
+    </div>`;
+  return screen("screen-quiz", `
+    <div class="quiz-head">
+      <p class="kicker">문제 ${item.no}</p>
+      <h1 class="question">${escapeHtml(item.question)}</h1>
+    </div>
+    ${figureHtml(item.image)}
+    ${options}`);
+}
+
+function renderFinish(){
+  return screen("screen-split", `
+    <section class="board">
+      <p class="board-kicker">마무리</p>
+      <h1>문제를<br>다시 풀어 볼까요?</h1>
+      <p class="board-lead">틀린 문제를 다시 풀거나<br>여기서 활동을 마칠 수 있습니다.</p>
+      ${CHALK_LINE}
+    </section>
+    <div class="choice-buttons">
+      <button type="button" class="choice-tile primary" id="btnRetry">
+        <strong>다시 풀겠습니다</strong>
+        <span>틀린 문제를 다시 풉니다. 이전 답과 정답은 보이지 않습니다.</span>
+      </button>
+      <button type="button" class="choice-tile ghost" id="btnEnd">
+        <strong>종료하겠습니다</strong>
+        <span>응답을 제출하고 활동을 마칩니다.</span>
+      </button>
+    </div>`);
+}
+
+function renderSubmitScreen(){
+  stageEl.classList.add("is-end");
+  renderChrome(PAGES.length, PAGES.length, "완료");
+  appEl.innerHTML = screen("screen-end", `
+    <section class="board board-end">
+      <div class="board-copy">
+        <p class="board-kicker">수학 학습 활동</p>
+        <h1>제출이<br>완료되었습니다</h1>
+        <p class="board-lead">참여해 주셔서 감사합니다.</p>
+      </div>
+      ${bookRow()}
+    </section>`);
+  navEl.innerHTML = "";
+}
+
+function renderRetry(){
+  const item = retryList[retryIndex];
+  if(retryStampIndex !== retryIndex){
+    retryStampIndex = retryIndex;
+    retryEnteredAt = Date.now();
+  }
+  stageEl.dataset.screen = "retry";
+  renderChrome(retryIndex+1, retryList.length, "다시 풀기");
+  const draft = item.kind==="mc"
+    ? { selected: state._retryPick ? state._retryPick[item.id] : null }
+    : { value: retryDraft[item.id] || "" };
+  appEl.innerHTML = memoHtml({ memo:true }) + renderProblem(item, draft, false);
+  navEl.innerHTML = `
+    <div class="navbar-inner">
+      <button type="button" class="ghost" id="navPrev" ${retryIndex===0?"disabled":""}>이전</button>
+      <div class="spacer"></div>
+      <p class="nav-hint" id="navHint"></p>
+      <button type="button" class="primary" id="navCheck">확인</button>
+    </div>`;
+  document.querySelectorAll(".opt").forEach(opt=>{
+    opt.onclick = ()=>{
+      retryDraft[item.id] = null;
+      state._retryPick = state._retryPick || {};
+      state._retryPick[item.id] = parseInt(opt.dataset.idx, 10);
+      document.querySelectorAll(".opt").forEach(el=>el.classList.toggle("selected", el===opt));
+    };
+  });
+  const input = document.getElementById("f_answer");
+  if(input){
+    input.oninput = ()=>{ retryDraft[item.id] = input.value; };
+  }
+  document.getElementById("navPrev").onclick = ()=>{
+    if(retryIndex===0) return;
+    retryIndex--;
+    render();
+  };
+  document.getElementById("navCheck").onclick = ()=>checkRetry(item);
+}
+
+function currentRetryAnswer(item){
+  if(item.kind==="mc") return state._retryPick ? state._retryPick[item.id] : null;
+  return retryDraft[item.id] || "";
+}
+
+function checkRetry(item){
+  const picked = item.kind==="mc" ? (state._retryPick && state._retryPick[item.id]) : null;
+  const value = item.kind==="short" ? (retryDraft[item.id]||"") : "";
+  const has = item.kind==="mc" ? picked!=null && !Number.isNaN(picked) : String(value).trim().length>0;
+  const hint = document.getElementById("navHint");
+  if(!has){
+    if(hint) hint.textContent = "답을 입력한 뒤 확인해 주세요.";
+    return;
+  }
+  const saved = item.kind==="mc" ? { selected:picked } : { value };
+  const ok = grade(item, saved);
+  const log = state.retryLog[item.id] || { back:0, skip:0, correct:false, responses:[] };
+  log.responses.push({ ...saved, isCorrect: ok, at: new Date().toISOString(), ms: Date.now()-retryEnteredAt });
+  state.retryLog[item.id] = log;
+  if(ok===true){
+    log.correct = true;
+    openModal(true, item.id);
+  } else if(ok===false){
+    openModal(false, item.id);
+  } else {
+    advanceRetry();
+  }
+}
+
+function openModal(correct, problemId){
+  modalRoot.innerHTML = correct ? `
+    <div class="modal-back">
+      <div class="modal" role="dialog" aria-modal="true">
+        <p class="msg">정답입니다.</p>
+        <div class="modal-actions end">
+          <button type="button" class="primary" id="btnModalNext">다음</button>
+        </div>
+      </div>
+    </div>` : `
+    <div class="modal-back">
+      <div class="modal" role="dialog" aria-modal="true">
+        <p class="msg">정답이 아닙니다.</p>
+        <div class="modal-actions">
+          <button type="button" class="ghost" id="btnModalBack">문제로 돌아가기</button>
+          <button type="button" class="primary" id="btnModalSkip">건너뛰기</button>
+        </div>
+      </div>
+    </div>`;
+  if(correct){
+    document.getElementById("btnModalNext").onclick = ()=>advanceRetry();
+  } else {
+    document.getElementById("btnModalBack").onclick = ()=>{
+      state.retryLog[problemId].back = 1;
+      closeModal();
+    };
+    document.getElementById("btnModalSkip").onclick = ()=>{
+      state.retryLog[problemId].skip = 1;
+      advanceRetry();
+    };
+  }
+}
+
+function advanceRetry(){
+  closeModal();
+  if(retryIndex < retryList.length-1){
+    retryIndex++;
+    render();
+  } else {
+    retryMode = false;
+    currentPage = PAGES.findIndex(p=>p.type==="finish");
+    pageEnteredAt = Date.now();
+    render();
+  }
+}
+
+function startRetry(){
+  state.didRetry = true;
+  retryList = PROBLEMS.filter(p=>grade(p, state.math[p.id])===false);
+  if(!retryList.length){
+    modalRoot.innerHTML = `
+      <div class="modal-back"><div class="modal" role="dialog" aria-modal="true">
+        <p class="msg">다시 풀 틀린 문제가 없습니다.</p>
+        <div class="modal-actions end"><button type="button" class="primary" id="btnNoRetry">알겠습니다</button></div>
+      </div></div>`;
+    document.getElementById("btnNoRetry").onclick = closeModal;
+    return;
+  }
+  retryMode = true;
+  retryIndex = 0;
+  retryDraft = {};
+  state._retryPick = {};
+  retryStampIndex = -1;
+  render();
+}
+
+function attachPageEvents(page){
+  if(page.type==="info"){
+    ["school","grade","classroom","name"].forEach(key=>{
+      const el = document.getElementById("f_"+key);
+      el.oninput = ()=>{ state.studentInfo[key] = el.value; updateNavValidity(); };
+    });
+    document.querySelectorAll(".gender-btn").forEach(btn=>{
+      btn.onclick = ()=>{
+        state.studentInfo.gender = btn.dataset.g;
+        document.querySelectorAll(".gender-btn").forEach(b=>b.classList.toggle("selected", b===btn));
+        updateNavValidity();
+      };
+    });
+  }
+  if(page.type==="summary"){
+    const el = document.getElementById("f_summary");
+    el.oninput = ()=>{ state.summary = el.value; updateNavValidity(); };
+  }
+  if(page.type==="sentence"){
+    const el = document.getElementById("f_sentence");
+    el.oninput = ()=>{ state.sentence = el.value; updateNavValidity(); };
+  }
+  if(page.type==="scale"){
+    document.querySelectorAll(".dot").forEach(dot=>{
+      dot.onclick = ()=>{
+        const id = dot.dataset.scale;
+        state.scales[id] = parseInt(dot.dataset.v, 10);
+        dot.parentElement.querySelectorAll(".dot").forEach(d=>d.classList.toggle("selected", d===dot));
+        updateNavValidity();
+      };
+    });
+  }
+  if(page.type==="problem"){
+    const item = page.data;
+    document.querySelectorAll(".opt").forEach(opt=>{
+      opt.onclick = ()=>{
+        const idx = parseInt(opt.dataset.idx, 10);
+        const prev = state.math[item.id] || {};
+        state.math[item.id] = { ...prev, selected: idx, isCorrect: item.answerIndex==null ? null : idx===item.answerIndex };
+        document.querySelectorAll(".opt").forEach(el=>el.classList.toggle("selected", el===opt));
+        updateNavValidity();
+      };
+    });
+    const input = document.getElementById("f_answer");
+    if(input){
+      input.oninput = ()=>{
+        const prev = state.math[item.id] || {};
+        const value = input.value;
+        state.math[item.id] = { ...prev, value, isCorrect: grade(item, { value }) };
+        updateNavValidity();
+      };
+    }
+  }
+  if(page.type==="finish"){
+    document.getElementById("btnRetry").onclick = startRetry;
+    document.getElementById("btnEnd").onclick = finishActivity;
+  }
+}
+
+function isCurrentPageValid(){
+  const page = PAGES[currentPage];
+  if(!page) return true;
+  switch(page.type){
+    case "info": {
+      const s = state.studentInfo;
+      return s.school.trim() && s.grade.trim() && s.classroom.trim() && s.name.trim() && s.gender;
+    }
+    case "summary": return state.summary.trim().length>0;
+    case "sentence": return state.sentence.trim().length>0;
+    case "scale": return page.items.every(item=>state.scales[item.id]);
+    case "problem": {
+      const saved = state.math[page.data.id];
+      if(!saved) return false;
+      if(page.data.kind==="mc") return saved.selected!=null;
+      return String(saved.value||"").trim().length>0;
+    }
+    default: return true;
+  }
+}
+
+function updateNavValidity(){
+  const nextBtn = document.getElementById("navNext");
+  const hint = document.getElementById("navHint");
+  if(!nextBtn) return;
+  const ok = isCurrentPageValid();
+  nextBtn.classList.toggle("is-waiting", !ok);
+  nextBtn.setAttribute("aria-disabled", ok ? "false" : "true");
+  if(hint) hint.textContent = (showHint && !ok) ? "계속하려면 모든 항목에 응답해 주세요." : "";
+}
+
+function renderNav(page){
+  clearInterval(dwellTimer);
+  const hidePrev = currentPage===0 && state.groupLocked;
+  const hideNext = page.type==="finish";
+  const locked = page.dwell && dwellLeft(page)>0;
+  navEl.innerHTML = `
+    <div class="navbar-inner">
+      ${hidePrev ? "" : `<button type="button" class="ghost" id="navPrev">이전</button>`}
+      <div class="spacer"></div>
+      <p class="nav-hint" id="navHint"></p>
+      ${locked ? `<span class="timer-pill" id="dwellClock">${formatClock(dwellLeft(page))}</span>` : (hideNext ? "" : `<button type="button" class="primary" id="navNext">다음</button>`)}
+    </div>`;
+  if(!hidePrev){
+    document.getElementById("navPrev").onclick = ()=>{
+      if(currentPage===0){
+        commitPageTime();
+        state.group = null;
+        render();
+        return;
+      }
+      commitPageTime();
+      showHint = false;
+      currentPage--;
+      render();
+    };
+  }
+  if(!locked && !hideNext){
+    document.getElementById("navNext").onclick = ()=>{
+      if(!isCurrentPageValid()){
+        showHint = true;
+        updateNavValidity();
+        return;
+      }
+      showHint = false;
+      commitPageTime();
+      if(currentPage < PAGES.length-1) currentPage++;
+      render();
+    };
+    updateNavValidity();
+  }
+  if(locked){
+    dwellTimer = setInterval(()=>{
+      const left = dwellLeft(PAGES[currentPage]);
+      const clock = document.getElementById("dwellClock");
+      if(!clock){ clearInterval(dwellTimer); return; }
+      if(left<=0){
+        clearInterval(dwellTimer);
+        renderNav(PAGES[currentPage]);
+      } else {
+        clock.textContent = formatClock(left);
+      }
+    }, 250);
+  }
+}
+
+function commitPageTime(){
+  const page = PAGES[currentPage];
+  if(!page) return;
+  const elapsed = Date.now()-pageEnteredAt;
+  state.pageMs[page.id] = (state.pageMs[page.id]||0) + elapsed;
+  if(page.dwell) state.dwellMs[page.id] = (state.dwellMs[page.id]||0) + elapsed;
+  if(page.type==="problem"){
+    const prev = state.math[page.data.id] || {};
+    state.math[page.data.id] = { ...prev, responseTimeMs:(prev.responseTimeMs||0)+elapsed };
+  }
+  pageEnteredAt = Date.now();
+}
+
+function secOf(ms){
+  if(ms==null || !Number.isFinite(Number(ms))) return "";
+  return Math.round(Number(ms)/10)/100;
+}
+function pageSec(ids){
+  let total = 0;
+  let any = false;
+  ids.forEach(id=>{
+    const ms = state.pageMs[id];
+    if(ms){ total += ms; any = true; }
+  });
+  return any ? secOf(total) : "";
+}
+function countChars(s){
+  return [...String(s||"").trim()].length;
+}
+function countWords(s){
+  const t = String(s||"").trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+function scaleMean(items){
+  const vals = items.map(it=>state.scales[it.id]).filter(v=>Number.isFinite(v));
+  if(!vals.length) return "";
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100;
+}
+function answerText(problem, saved){
+  if(!saved) return "";
+  if(problem.kind==="mc"){
+    if(saved.selected==null || Number.isNaN(saved.selected)) return "";
+    return problem.options[saved.selected] || "";
+  }
+  return String(saved.value||"").trim();
+}
+function choiceNo(problem, saved){
+  if(!problem || problem.kind!=="mc" || !saved || saved.selected==null || Number.isNaN(saved.selected)) return "";
+  return saved.selected + 1;
+}
+function markBit(v){
+  if(v===true) return 1;
+  if(v===false) return 0;
+  return "";
+}
+
+function buildColumns(){
+  const cols = [];
+  const add = (name, value)=>cols.push([name, value==null ? "" : value]);
+  const info = state.studentInfo;
+  const behavior = [...POST_B, ...POST_C];
+  add("제출시각", new Date().toISOString());
+  add("집단", state.group==="exp" ? 1 : (state.group==="ctrl" ? 0 : ""));
+  add("집단명", state.group==="exp" ? "실험" : (state.group==="ctrl" ? "통제" : ""));
+  add("학교", info.school.trim());
+  add("학년", info.grade.trim());
+  add("반", info.classroom.trim());
+  add("이름", info.name.trim());
+  add("성별", info.gender || "");
+  add("성별코드", info.gender==="남자" ? 1 : (info.gender==="여자" ? 2 : ""));
+  add("요약", state.summary.trim());
+  add("요약_글자수", countChars(state.summary));
+  add("요약_어절수", countWords(state.summary));
+  add("기억문장", state.sentence.trim());
+  add("기억문장_글자수", countChars(state.sentence));
+  add("기억문장_어절수", countWords(state.sentence));
+  CHECK_ITEMS.forEach((it,i)=>add("조작점검"+(i+1), state.scales[it.id] ?? ""));
+  add("조작점검_응답수", CHECK_ITEMS.filter(it=>Number.isFinite(state.scales[it.id])).length);
+  add("조작점검_평균", scaleMean(CHECK_ITEMS));
+  POST_A.forEach((it,i)=>add("사후적응"+(i+1), state.scales[it.id] ?? ""));
+  add("사후적응_평균", scaleMean(POST_A));
+  behavior.forEach((it,i)=>add("사후행동"+(i+1), state.scales[it.id] ?? ""));
+  add("사후행동_평균", scaleMean(behavior));
+
+  let scored = 0, firstCorrect = 0, firstWrong = 0, unscored = 0;
+  let retryItems = 0, retryCorrect = 0, backSum = 0, skipSum = 0, finalCorrect = 0;
+  PROBLEMS.forEach(p=>{
+    const tag = "문제"+String(p.no).padStart(2,"0");
+    const saved = state.math[p.id] || {};
+    const has = p.kind==="mc"
+      ? saved.selected!=null && !Number.isNaN(saved.selected)
+      : String(saved.value||"").trim().length>0;
+    const ok = has ? grade(p, saved) : null;
+    const log = state.retryLog[p.id];
+    const responses = log && log.responses ? log.responses : [];
+    const last = responses.length ? responses[responses.length-1] : null;
+    add(tag+"_응답", answerText(p, saved));
+    add(tag+"_선택", choiceNo(p, saved));
+    add(tag+"_정오", markBit(ok));
+    add(tag+"_풀이초", has ? secOf(saved.responseTimeMs||0) : "");
+    add(tag+"_재시도횟수", log ? responses.length : "");
+    if(last){
+      const retrySaved = p.kind==="mc" ? { selected:last.selected } : { value:last.value||"" };
+      add(tag+"_재시도응답", answerText(p, retrySaved));
+      add(tag+"_재시도정오", markBit(last.isCorrect));
+    }else{
+      add(tag+"_재시도응답", "");
+      add(tag+"_재시도정오", "");
+    }
+    add(tag+"_재시도_돌아가기", log ? (log.back ? 1 : 0) : "");
+    add(tag+"_재시도_건너뛰기", log ? (log.skip ? 1 : 0) : "");
+
+    const keyed = p.kind==="mc" ? p.answerIndex!=null : p.answer!=null;
+    if(!keyed) unscored++;
+    else{
+      scored++;
+      if(ok===true) firstCorrect++;
+      else if(ok===false) firstWrong++;
+      if(ok===true || (last && last.isCorrect===true)) finalCorrect++;
+    }
+    if(log){
+      retryItems++;
+      if(last && last.isCorrect===true) retryCorrect++;
+      backSum += log.back ? 1 : 0;
+      skipSum += log.skip ? 1 : 0;
+    }
+  });
+
+  add("채점문항수", scored);
+  add("최초정답수", firstCorrect);
+  add("최초오답수", firstWrong);
+  add("미채점문항수", unscored);
+  add("최초정답률", scored ? Math.round(firstCorrect/scored*10000)/100 : "");
+  add("다시풀기실시", state.didRetry ? 1 : 0);
+  add("재시도문항수", retryItems);
+  add("재시도정답수", retryCorrect);
+  add("재시도_돌아가기합", backSum);
+  add("재시도_건너뛰기합", skipSum);
+  add("재시도후정답수", finalCorrect);
+  add("재시도후정답률", scored ? Math.round(finalCorrect/scored*10000)/100 : "");
+  add("목표기준", CONFIG.PASS_THRESHOLD);
+  add("목표도달", firstCorrect >= CONFIG.PASS_THRESHOLD ? 1 : 0);
+  add("체류초_정보", pageSec(["info"]));
+  add("체류초_읽기", pageSec(["exp-read","ctrl-read"]));
+  add("체류초_전문가", pageSec(["exp-expert","ctrl-expert"]));
+  add("체류초_이야기", pageSec(["exp-stories","ctrl-stories"]));
+  add("체류초_요약", pageSec(["exp-summary","ctrl-summary"]));
+  add("체류초_한문장", pageSec(["exp-sentence","ctrl-sentence"]));
+  add("체류초_조작점검", pageSec(["check"]));
+  add("체류초_목표", pageSec(["goal"]));
+  add("체류초_사후1", pageSec(["post1"]));
+  add("체류초_사후2", pageSec(["post2"]));
+  add("체류초_사후3", pageSec(["post3"]));
+  add("체류초_마무리", pageSec(["finish"]));
+  add("체류초_글합계", pageSec(["exp-read","ctrl-read","exp-expert","ctrl-expert","exp-stories","ctrl-stories","exp-summary","ctrl-summary","exp-sentence","ctrl-sentence","check"]));
+  add("전체소요초", state.startedAt ? secOf(Date.now()-state.startedAt) : "");
+  return cols;
+}
+
+function buildPayload(){
+  const cols = buildColumns();
+  return {
+    headers: cols.map(col=>col[0]),
+    values: cols.map(col=>col[1])
+  };
+}
+
+function finishActivity(){
+  if(state.submitted) return;
+  if(!retryMode) commitPageTime();
+  retryMode = false;
+  closeModal();
+  const payload = buildPayload();
+  state.submitted = true;
+  render();
+  if(!CONFIG.GAS_ENDPOINT) return;
+  fetch(CONFIG.GAS_ENDPOINT, {
+    method:"POST",
+    mode:"no-cors",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).then(()=>console.log("Google Sheets 전송 요청 완료"))
+    .catch(err=>console.error("Google Sheets 전송 실패:", err));
+}
+
+window.addEventListener("beforeunload", (e)=>{
+  if(state.group && !state.submitted){
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+loadCodes();
+loadDwell();
+render();
+
+</script>
+</body>
+</html>
