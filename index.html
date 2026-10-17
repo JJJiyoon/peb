@@ -1213,7 +1213,6 @@ function learnPages(group){
     type:"scale", id:"check", label:"질문", optional:false,
     prompt:"<틀린 문제에 대한 나의 생각>",
     intro:"수학 문제를 풀다가 틀렸을 때, 틀린 문제에 대해 지금 어떻게 생각하는지 답해주세요.",
-    note:"다음 장에도 설문이 이어집니다.",
     corner:"나는 수학 문제를 풀다가 틀렸을 때,",
     items:CHECK_ITEMS
   });
@@ -1621,8 +1620,8 @@ function renderFeedback(){
   const n = correctCount();
   const text = n >= CONFIG.PASS_THRESHOLD
     ? "목표를 달성했습니다."
-    : `15문제 중 ${n}문제를 맞혔습니다. 이번 활동의 목표는 10문제 이상을 맞히는 것이었으며, 이번 결과는 목표에 도달하지 못했습니다.`;
-  return screen("screen-message", `<p class="goal-banner">${escapeHtml(text)}</p>`);
+    : `15문제 중 ${n}문제를 맞혔습니다.<br>이번 활동의 목표는 10문제 이상을 맞히는 것이었으며,<br>이번 결과는 목표에 도달하지 못했습니다.`;
+  return screen("screen-message", `<p class="goal-banner">${text}</p>`);
 }
 
 function renderAttribution(){
