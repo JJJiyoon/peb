@@ -45,7 +45,7 @@
     --title:clamp(30px, 2.8vw, 36px);
   }
   *{box-sizing:border-box;}
-  html,body{height:100%;}
+  html,body{height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto;}
   body{
     margin:0;
     font-family:var(--sans);
@@ -59,11 +59,12 @@
   ::selection{background:#d7e4f3;}
 
   .app-bg{
-    height:100dvh;
+    min-height:100dvh;
+    height:auto;
     display:block;
     padding:0;
     position:relative;
-    overflow:hidden;
+    overflow:visible;
     background:var(--board);
   }
   .room-shelf,.room-plant,.room-desk{display:none;}
@@ -71,7 +72,8 @@
     position:relative;
     z-index:1;
     width:100%;
-    height:100%;
+    min-height:100dvh;
+    height:auto;
     background:
       radial-gradient(80% 50% at 50% 0%, rgba(255,255,255,.08), transparent 42%),
       linear-gradient(180deg, #4a6156 0%, var(--board) 28%, var(--board-2));
@@ -81,10 +83,17 @@
     box-shadow:none;
     display:flex;
     flex-direction:column;
-    overflow:hidden;
+    overflow:visible;
   }
 
-  .stage-head{flex:0 0 auto; background:transparent; color:var(--chalk);}
+  .stage-head{
+    flex:0 0 auto;
+    position:sticky;
+    top:0;
+    z-index:8;
+    background:linear-gradient(180deg, #4a6156 0%, var(--board) 70%);
+    color:var(--chalk);
+  }
   .stage-head-row{
     min-height:64px;
     display:flex;
@@ -118,17 +127,17 @@
   .track span{display:block; height:100%; background:var(--chalk);}
 
   .stage-body{
-    flex:1;
+    flex:1 0 auto;
     min-height:0;
     display:flex;
     flex-direction:column;
-    padding:14px 40px 16px;
-    overflow:hidden;
+    padding:14px 40px 28px;
+    overflow:visible;
   }
   .screen{
-    flex:1;
-    min-height:0;
-    overflow:auto;
+    flex:1 0 auto;
+    min-height:auto;
+    overflow:visible;
     display:flex;
     flex-direction:column;
   }
@@ -399,6 +408,11 @@
     padding:22px 26px 18px;
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.65);
   }
+  .screen-message{
+    align-items:center;
+    justify-content:center;
+    min-height:52vh;
+  }
   .screen-stack > .panel{
     background:transparent;
     border:0;
@@ -412,7 +426,7 @@
     padding:4px 14px;
     letter-spacing:0;
   }
-  .screen-quiz,.screen-scale{flex:1; min-height:0; gap:14px;}
+  .screen-quiz,.screen-scale{flex:1 0 auto; min-height:auto; gap:20px; padding-bottom:28px;}
   .quiz-head{flex:none; padding:0 6px 8px; text-align:center;}
   .quiz-head .kicker{color:#2a2a2a;}
   .question{
@@ -424,14 +438,14 @@
     color:var(--ink-title);
   }
   .options{
-    flex:1;
-    min-height:0;
+    flex:0 0 auto;
+    min-height:auto;
     display:flex;
     flex-direction:column;
     gap:10px;
   }
   .opt{
-    flex:1 1 0;
+    flex:0 0 auto;
     min-height:56px;
     display:flex;
     align-items:center;
@@ -471,14 +485,15 @@
   .opt.is-wrong .letter{background:var(--coral); color:#fff; border-color:var(--coral);}
 
   .answer-well{
-    flex:1;
-    min-height:0;
+    flex:0 0 auto;
+    min-height:auto;
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
     gap:16px;
-    padding:28px 28px;
+    margin-top:28px;
+    padding:28px 28px 36px;
     text-align:center;
     color:var(--ink);
   }
@@ -792,18 +807,72 @@
   .scale-ends{display:flex; justify-content:space-between; margin-top:6px; font-size:30px; color:var(--muted);}
 
   .figure{
-    flex:none; display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto; display:flex; align-items:center; justify-content:center;
     background:#fff; border:1px solid var(--line); border-radius:16px;
-    padding:8px 12px; overflow:hidden;
+    padding:8px 12px; margin-bottom:8px; overflow:visible;
   }
-  .figure img{max-width:100%; max-height:340px; width:auto; object-fit:contain;}
+  .figure img{max-width:100%; max-height:340px; width:auto; height:auto; object-fit:contain;}
+  .goal-banner{
+    margin:auto;
+    max-width:18em;
+    text-align:center;
+    font-size:34px;
+    font-weight:700;
+    line-height:1.7;
+    letter-spacing:-.03em;
+    color:var(--ink);
+  }
+  .goal-banner strong{color:red; font-weight:800;}
+  .survey-copy{flex:none; display:flex; flex-direction:column; gap:8px;}
+  .survey-copy h2{font-size:28px; font-weight:800; letter-spacing:-.03em;}
+  .survey-copy .prompt{font-size:26px; font-weight:800;}
+  .survey-copy p{font-size:24px; line-height:1.55; white-space:pre-line;}
+  .survey-table-wrap{flex:none; overflow:visible;}
+  .survey-table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    table-layout:fixed;
+    background:#fff;
+  }
+  .survey-table th,.survey-table td{
+    border:1px solid #c5cfc8;
+    text-align:center;
+    vertical-align:middle;
+    padding:10px 6px;
+  }
+  .survey-table thead th{
+    position:sticky;
+    top:72px;
+    z-index:4;
+    background:#1e4d38;
+    color:#fff;
+    font-size:18px;
+    font-weight:700;
+    line-height:1.25;
+  }
+  .survey-table thead th b{display:block; font-size:22px; margin-bottom:4px;}
+  .survey-table thead th:first-child,
+  .survey-table tbody td:first-child{
+    width:46%;
+    text-align:left;
+    padding:14px 16px;
+    font-size:22px;
+    line-height:1.45;
+    font-weight:700;
+  }
+  .survey-table tbody td:first-child{font-weight:500; background:#fbfaf6;}
+  .cell-pick{
+    width:34px; height:34px; border-radius:50%;
+    border:2px solid #1e4d38; background:#fff; cursor:pointer; padding:0;
+  }
+  .cell-pick.selected{background:#1e4d38; box-shadow:inset 0 0 0 7px #fff;}
   .screen-quiz .quiz-head .question{
     font-size:25px;
     white-space:normal;
     line-height:1.45;
   }
-  .screen-quiz .opt{font-size:25px;}
-  .screen-quiz .opt{min-height:48px; flex:1 1 44px;}
+  .screen-quiz .opt{font-size:25px; min-height:48px; flex:0 0 auto;}
   .timer-pill{
     font-variant-numeric:tabular-nums; font-weight:750; color:var(--navy);
     background:var(--navy-soft); border-radius:999px; padding:10px 16px;
@@ -827,8 +896,8 @@
     .app-bg{padding:0;}
   }
   @media (max-width:860px){
-    .app-bg{height:100dvh; min-height:100dvh; display:block; padding:0;}
-    .stage{height:100%; min-height:100dvh; width:100%;}
+    .app-bg{height:auto; min-height:100dvh; display:block; padding:0; overflow:visible;}
+    .stage{height:auto; min-height:100dvh; width:100%; overflow:visible;}
     .story-grid{grid-template-columns:1fr 1fr;}
     .stage-body{overflow:visible;}
     .screen{overflow:visible;}
@@ -898,7 +967,7 @@
    ====================================================================== */
 const CONFIG = {
   GAS_ENDPOINT: "https://script.google.com/macros/s/AKfycbwurvMWE7H6GZqEcqmP796c3RllDO0K60im3gu_5o7igiFmf2M3wE9iA01dsSb7wZTd/exec",
-  PASS_THRESHOLD: 8,
+  PASS_THRESHOLD: 10,
   DWELL_MS: 2 * 60 * 1000,
   DWELL_DEFAULT_SEC: 120,
   DWELL_MAX_SEC: 600,
@@ -910,32 +979,39 @@ const CODE_STORE_KEY = "activityCodes";
 const IMG = "images/";
 
 const CHECK_ITEMS = [
-  { id:"m1", text:"수학 문제를 풀다가 틀렸을 때, 나는 무엇을 더 배워야 하는지 알 수 있다." },
-  { id:"m2", text:"수학 문제를 풀다가 틀렸을 때, 나는 무엇을 이해하지 못했는지 알 수 있다." },
-  { id:"m3", text:"틀린 수학 문제를 살펴보면, 다음에 무엇을 공부해야 하는지 알 수 있다." },
-  { id:"m4", text:"틀린 문제는 다음 수학 학습에 유용하고 쓸모있는 정보가 될 수 있다." },
-  { id:"m5", text:"수학 문제를 풀다가 틀려도, 틀린 문제에서 배울 점을 찾을 수 있다." }
+  { id:"m1", text:"무엇을 더 배워야 하는지 알 수 있다." },
+  { id:"m2", text:"내가 무엇을 이해하지 못했는지 알 수 있다." },
+  { id:"m3", text:"다음에 무엇을 공부해야 하는지 알 수 있다." },
+  { id:"m4", text:"다음 수학 학습에 유용하고 쓸모 있는 정보가 될 수 있다." },
+  { id:"m5", text:"배울 점을 찾을 수 있다." }
+];
+
+const REASON_ITEMS = [
+  { id:"r1", text:"그 이유는 내가 조절할 수 있다." },
+  { id:"r2", text:"그 이유에는 내가 영향을 줄 수 있다." },
+  { id:"r3", text:"그 이유에는 내가 바꿀 수 있는 부분이 있다." }
 ];
 
 const ADAPT_ITEMS = [
-  { id:"a1", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 나는 여전히 수학을 공부할 생각이 있다." },
-  { id:"a2", text:"이번 수학 활동에서 문제를 풀다가 실수했지만, 그만두지 않고 계속해서 문제를 풀고자 했다." },
-  { id:"a3", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 수학은 여전히 즐겁다." },
-  { id:"a4", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 수학 수업은 여전히 즐거울 것이다." },
-  { id:"a5", text:"이번 수학 활동에서 문제를 풀다가 실수했어도, 수학 공부를 계속하고 싶은 마음이 든다." }
+  { id:"a1", text:"나는 여전히 수학을 공부할 생각이 있다." },
+  { id:"a2", text:"그만두지 않고 계속해서 문제를 풀고자 했다." },
+  { id:"a3", text:"수학은 여전히 즐겁다." },
+  { id:"a4", text:"수학 수업은 여전히 즐거울 것이다." },
+  { id:"a5", text:"수학 공부를 계속하고 싶은 마음이 든다." }
 ];
 
 const BEHAVE_ITEMS = [
-  { id:"b1", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 다음번에는 더 열심히 해야겠다는 마음이 들었다." },
-  { id:"b2", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 다음에는 더 잘 준비해야 한다는 것을 느꼈다." },
-  { id:"b3", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 왜 틀렸는지 이해하려고 노력했다." },
-  { id:"b4", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 어떻게 하면 다음에 더 잘할 수 있을지 자세히 알아보려고 노력했다." },
-  { id:"b5", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 다음에 어떤 부분에 노력을 기울여야 하는지 알게 됐다." },
-  { id:"b6", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 어떤 부분에서 실수했는지 생각했다." },
-  { id:"b7", text:"이번 수학 활동에서 문제를 풀다가 틀렸지만, 내가 더 발전시켜야 할 부분을 알려줬다." }
+  { id:"b1", text:"다음번에는 더 열심히 해야겠다는 마음이 들었다." },
+  { id:"b2", text:"다음에는 더 잘 준비해야 한다는 것을 느꼈다." },
+  { id:"b3", text:"왜 틀렸는지 이해하려고 노력했다." },
+  { id:"b4", text:"어떻게 하면 다음에 더 잘할 수 있을지 자세히 알아보려고 노력했다." },
+  { id:"b5", text:"다음에 어떤 부분에 노력을 기울여야 하는지 알게 됐다." },
+  { id:"b6", text:"어떤 부분에서 실수했는지 생각했다." },
+  { id:"b7", text:"내가 더 발전시켜야 할 부분을 알려줬다." }
 ];
 
-const REVIEW_ITEMS = [...ADAPT_ITEMS, ...BEHAVE_ITEMS];
+const LIKERT_LABELS = ["전혀\n그렇지\n않다", "그렇지\n않다", "보통이다", "그렇다", "매우\n그렇다"];
+const ADAPT_INTRO = "방금 수학 활동을 하면서 자신의 답이 틀렸다는 것을 알게 되었을 때, 어떤 생각과 마음을 가졌고 어떻게 했는지 떠올려 주세요. 평소 모습이나 바람직하다고 생각하는 모습이 아니라 이번 활동에서의 경험에 답해 주세요.\n틀린 답을 확인한 경험이 없다면 문항을 모두 건너뛰어도 좋습니다.";
 
 const PROBLEMS = [
   { id:"q1", no:1, kind:"mc", image:"img01.png",
@@ -950,12 +1026,12 @@ const PROBLEMS = [
     answerIndex:1 },
   { id:"q4", no:4, kind:"short", image:"img04.png",
     question:"다음 전개도를 보고 접었을 때 면 ㉣과 평행한 면을 고르세요. 면 ( )",
-    answer:"㉡" },
+    answer:"ㄴ" },
   { id:"q5", no:5, kind:"short", image:"img05.png",
     question:"길이가 3m인 막대를 똑같이 12도막으로 나누려고 합니다. 한 도막의 길이는 몇 cm로 해야 하는지 구해 보세요. ( )cm",
     answer:"25" },
   { id:"q6", no:6, kind:"short", image:"img06.png",
-    question:"자연수의 나눗셈을 이용하여 ㉠에 알맞은 수를 써넣으세요. ㉠ ( )",
+    question:"자연수의 나눗셈을 이용하여 ㉠에 알맞은 수를 써넣으세요.",
     answer:"2.14" },
   { id:"q7", no:7, kind:"mc", image:null,
     question:"물 426g에 소금 74g을 녹여 소금물을 만들었습니다. 만들어진 소금물의 농도는 몇 %인지 고르세요.",
@@ -989,7 +1065,7 @@ const PROBLEMS = [
     question:"다음 직육면체를 잘라서 만들 수 있는 가장 큰 정육면체의 부피로 알맞은 것을 고르세요.",
     options:["187cm³","198cm³","201cm³","216cm³","232cm³"], answerIndex:3 },
   { id:"q15", no:15, kind:"short", image:"img15.png",
-    question:"안치수가 아래와 같은 물탱크에 물을 가득 채우려고 합니다. 한 번에 0.36m³씩 물을 붓는다면 물을 몇 번 부어야 할까요? ( )번",
+    question:"안치수가 아래와 같은 물탱크에 물을 가득 채우려고 합니다. 한 번에 0.36m³씩 물을 붓는다면 물을 몇 번 부어야 할까요? 숫자만 작성하시오.",
     answer:"28" }
 ];
 
@@ -1127,32 +1203,66 @@ function learnPages(group){
       prompts:["왜 안전한 미디어 사용은 일상생활의 자연스러운 일부인가요?","안전한 미디어 사용은 자신을 지키는 데 어떻게 도움을 줄 수 있나요?"] },
     { type:"sentence", id:"ctrl-sentence", label:"한 문장", dwell:true, stem }
   ];
-  if(exp){
-    pages.push({ type:"scale", id:"check", label:"질문", dwell:true, memo:false,
-      kicker:"질문", title:"다음 문장을 읽고 해당하는 곳에 표시해 주세요.", items:CHECK_ITEMS });
-  }
+  pages.push({
+    type:"scale", id:"check", label:"질문", optional:false,
+    heading:"다. 긍정적 오류 신념 (조작점검)",
+    prompt:"<틀린 문제에 대한 나의 생각>",
+    intro:"수학 문제를 풀다가 틀렸을 때, 틀린 문제에 대해 지금 어떻게 생각하는지 답해주세요.",
+    corner:"나는 수학 문제를 풀다가 틀렸을 때,",
+    items:CHECK_ITEMS
+  });
   return pages;
 }
 
-function reviewPages(){
-  const title = "오늘 수학 활동을 떠올리며 표시해 주세요.";
-  return [0, 1, 2].map(i=>({
-    type:"scale",
-    id:"post"+(i+1),
-    label:"돌아보기",
-    kicker:"돌아보기",
-    title,
-    items:REVIEW_ITEMS.slice(i*4, i*4+4),
-    memo:true
-  }));
+function chunkItems(items, size){
+  const pages = [];
+  for(let i=0;i<items.length;i+=size) pages.push(items.slice(i, i+size));
+  return pages;
+}
+
+function surveyPages(){
+  const pages = [{
+    type:"scale", id:"reason", label:"이유", optional:true,
+    intro:"내가 생각한 이유에 대해 아래 자신이 작성한 ‘그 이유’는 방금 밑줄을 그었거나 마음속으로 떠올린 가장 중요한 이유를 말합니다. 이유 한 가지를 생각하며 답해 주세요.\n이유가 떠오르지 않거나 답하고 싶지 않으면 아래 문항을 건너뛸 수 있습니다. 응답을 마쳤다면 다음 안내가 나올 때까지 기다려 주세요.",
+    corner:"문항",
+    items:REASON_ITEMS
+  }];
+  chunkItems(ADAPT_ITEMS, 4).forEach((items, i)=>{
+    pages.push({
+      type:"scale", id:"adapt"+(i+1), label:"적응적 오류반응", optional:true,
+      heading:"차. 적응적 오류반응",
+      prompt:"<이번 활동에서 문제를 틀렸을 때>",
+      intro:ADAPT_INTRO,
+      corner:"이번 수학 활동에서 문제를 풀다가 틀렸지만,",
+      items
+    });
+  });
+  chunkItems(BEHAVE_ITEMS, 4).forEach((items, i)=>{
+    pages.push({
+      type:"scale", id:"behave"+(i+1), label:"적응적 오류반응", optional:true,
+      heading:"차. 적응적 오류반응",
+      prompt:"<이번 활동에서 문제를 틀렸을 때>",
+      intro:ADAPT_INTRO,
+      corner:"이번 수학 활동에서 문제를 풀다가 틀렸지만,",
+      items
+    });
+  });
+  return pages;
 }
 
 function buildPages(group){
+  const learn = learnPages(group);
+  const cut = learn.findIndex(p=>p.id==="check");
+  const head = cut>=0 ? learn.slice(0, cut) : learn;
+  const tail = cut>=0 ? learn.slice(cut) : [];
   return [
     { type:"info", id:"info", label:"시작" },
-    ...learnPages(group),
+    ...head,
+    { type:"goal", id:"goal", label:"목표" },
+    ...tail,
     ...PROBLEMS.map((p,i)=>({ type:"problem", id:p.id, data:p, index:i, label:`문제 ${p.no}`, memo:true })),
-    ...reviewPages()
+    ...surveyPages(),
+    { type:"closing", id:"closing", label:"마무리" }
   ];
 }
 
@@ -1245,6 +1355,7 @@ function render(){
     case "goal": html += renderGoal(); break;
     case "problem": html += renderProblem(page.data, state.math[page.data.id], false); break;
     case "finish": html += renderFinish(); break;
+    case "closing": html += renderClosing(); break;
   }
   appEl.innerHTML = html;
   attachPageEvents(page);
@@ -1447,37 +1558,36 @@ function renderSentence(page){
 }
 
 function renderScale(page){
+  const labels = LIKERT_LABELS.map((label, i)=>`<th><b>${i+1}</b><span>${escapeHtml(label).replace(/\n/g,"<br>")}</span></th>`).join("");
+  const rows = page.items.map(item=>{
+    const picked = state.scales[item.id];
+    const cells = [1,2,3,4,5].map(n=>`<td><button type="button" class="cell-pick${picked===n?" selected":""}" data-scale="${item.id}" data-v="${n}" aria-label="${n}점"></button></td>`).join("");
+    return `<tr><td>${escapeHtml(item.text)}</td>${cells}</tr>`;
+  }).join("");
   return screen("screen-scale", `
-    <div class="quiz-head">
-      <p class="kicker">${escapeHtml(page.kicker||"질문")}</p>
-      <h2 class="question">${escapeHtml(page.title)}</h2>
+    <div class="survey-copy">
+      ${page.heading ? `<h2>${escapeHtml(page.heading)}</h2>` : ""}
+      ${page.prompt ? `<p class="prompt">${escapeHtml(page.prompt)}</p>` : ""}
+      ${page.intro ? `<p>${escapeHtml(page.intro)}</p>` : ""}
     </div>
-    <div class="scale-page">
-      ${page.items.map(item=>{
-        const picked = state.scales[item.id];
-        return `<div class="likert6${page.id==="check" ? " is-big" : ""}">
-          <p>${escapeHtml(item.text)}</p>
-          <div class="scale-block">
-            <div class="dots">
-              ${[1,2,3,4,5,6].map(n=>`<button type="button" class="dot ${picked===n?"selected":""}" data-scale="${item.id}" data-v="${n}" aria-label="${n}점">${n}</button>`).join("")}
-            </div>
-            <div class="scale-ends"><span>전혀 그렇지 않다</span><span>매우 그렇다</span></div>
-          </div>
-        </div>`;
-      }).join("")}
+    <div class="survey-table-wrap">
+      <table class="survey-table">
+        <thead>
+          <tr><th>${escapeHtml(page.corner || "문항")}</th>${labels}</tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>`);
 }
 
 function renderGoal(){
   return screen("screen-message", `
-    <div class="message-panel goal-layout">
-      <div class="goal-num"><strong>${CONFIG.PASS_THRESHOLD}</strong><span>/ ${PROBLEMS.length}</span></div>
-      <div class="goal-copy">
-        <p class="kicker">목표 안내</p>
-        <p class="lead">목표 기준은 ${PROBLEMS.length}문제 중 ${CONFIG.PASS_THRESHOLD}문제 이상 정답을 맞추는 것입니다. 목표 기준에 도달하도록 문제를 풀어보세요.</p>
-        <p class="small-note">준비가 되면 아래 다음 버튼을 눌러 이동하세요.</p>
-      </div>
-    </div>`);
+    <p class="goal-banner">이번 활동에서는 수학 문제 15개를 풉니다. 이번 활동의 목표는 <strong>15문제 중 10문제 이상</strong>을 맞히는 것입니다. 목표에 도달하려고 노력해보세요.</p>`);
+}
+
+function renderClosing(){
+  return screen("screen-message", `
+    <p class="goal-banner">설문이 모두 끝났습니다. 진행하는 선생님의 안내를 기다려 주세요.</p>`);
 }
 
 function renderProblem(item, saved, fresh){
@@ -1733,11 +1843,11 @@ function attachPageEvents(page){
     el.oninput = ()=>{ state.sentence = el.value; updateNavValidity(); };
   }
   if(page.type==="scale"){
-    document.querySelectorAll(".dot").forEach(dot=>{
-      dot.onclick = ()=>{
-        const id = dot.dataset.scale;
-        state.scales[id] = parseInt(dot.dataset.v, 10);
-        dot.parentElement.querySelectorAll(".dot").forEach(d=>d.classList.toggle("selected", d===dot));
+    document.querySelectorAll(".cell-pick").forEach(btn=>{
+      btn.onclick = ()=>{
+        const id = btn.dataset.scale;
+        state.scales[id] = parseInt(btn.dataset.v, 10);
+        btn.closest("tr").querySelectorAll(".cell-pick").forEach(el=>el.classList.toggle("selected", el===btn));
         updateNavValidity();
       };
     });
@@ -1775,7 +1885,9 @@ function isCurrentPageValid(){
     }
     case "summary": return state.summary.trim().length>0;
     case "sentence": return state.sentence.trim().length>0;
-    case "scale": return page.items.every(item=>state.scales[item.id]);
+    case "scale":
+      if(page.optional) return true;
+      return page.items.every(item=>Number.isFinite(state.scales[item.id]));
     case "problem": {
       const saved = state.math[page.data.id];
       if(!saved) return false;
@@ -1938,6 +2050,9 @@ function buildColumns(){
   CHECK_ITEMS.forEach((it,i)=>add("조작점검"+(i+1), state.scales[it.id] ?? ""));
   add("조작점검_응답수", CHECK_ITEMS.filter(it=>Number.isFinite(state.scales[it.id])).length);
   add("조작점검_평균", scaleMean(CHECK_ITEMS));
+  REASON_ITEMS.forEach((it,i)=>add("이유"+(i+1), state.scales[it.id] ?? ""));
+  add("이유_응답수", REASON_ITEMS.filter(it=>Number.isFinite(state.scales[it.id])).length);
+  add("이유_평균", scaleMean(REASON_ITEMS));
   ADAPT_ITEMS.forEach((it,i)=>add("사후적응"+(i+1), state.scales[it.id] ?? ""));
   add("사후적응_평균", scaleMean(ADAPT_ITEMS));
   behavior.forEach((it,i)=>add("사후행동"+(i+1), state.scales[it.id] ?? ""));
@@ -2009,10 +2124,12 @@ function buildColumns(){
   add("체류초_한문장", pageSec(["exp-sentence","ctrl-sentence"]));
   add("체류초_조작점검", pageSec(["check"]));
   add("체류초_목표", pageSec(["goal"]));
-  add("체류초_사후1", pageSec(["post1"]));
-  add("체류초_사후2", pageSec(["post2"]));
-  add("체류초_사후3", pageSec(["post3"]));
-  add("체류초_마무리", pageSec(["finish"]));
+  add("체류초_이유", pageSec(["reason"]));
+  add("체류초_적응1", pageSec(["adapt1"]));
+  add("체류초_적응2", pageSec(["adapt2"]));
+  add("체류초_행동1", pageSec(["behave1"]));
+  add("체류초_행동2", pageSec(["behave2"]));
+  add("체류초_마무리", pageSec(["closing"]));
   add("체류초_글합계", pageSec(["exp-read","ctrl-read","exp-expert","ctrl-expert","exp-stories","ctrl-stories","exp-summary","ctrl-summary","exp-sentence","ctrl-sentence","check"]));
   add("전체소요초", state.startedAt ? secOf(Date.now()-state.startedAt) : "");
   return cols;
