@@ -1015,7 +1015,7 @@ const BEHAVE_ITEMS = [
 ];
 
 const LIKERT_LABELS = ["전혀\n그렇지\n않다", "그렇지\n않다", "보통이다", "그렇다", "매우\n그렇다"];
-const ADAPT_INTRO = "방금 수학 활동을 하면서 자신의 답이 틀렸다는 것을 알게 되었을 때, 어떤 생각과 마음을 가졌고 어떻게 했는지 떠올려 주세요. 평소 모습이나 바람직하다고 생각하는 모습이 아니라 이번 활동에서의 경험에 답해 주세요.\n틀린 답을 확인한 경험이 없다면 문항을 모두 건너뛰어도 좋습니다.";
+const ADAPT_INTRO = "방금 수학 활동을 하면서 자신의 답이 틀렸다는 것을 알게 되었을 때, 어떤 생각과 마음을 가졌고 어떻게 했는지 떠올려 주세요. 평소 모습이나 바람직하다고 생각하는 모습이 아니라 이번 활동에서의 경험에 답해 주세요.";
 
 const PROBLEMS = [
   { id:"q1", no:1, kind:"mc", image:"img01.png",
@@ -1234,7 +1234,7 @@ function surveyPages(){
   }];
   chunkItems([...ADAPT_ITEMS, ...BEHAVE_ITEMS], 4).forEach((items, i)=>{
     pages.push({
-      type:"scale", id:"post"+(i+1), label:"설문", optional:true,
+      type:"scale", id:"post"+(i+1), label:"설문", optional:false,
       prompt:"<이번 활동에서 문제를 틀렸을 때>",
       intro:ADAPT_INTRO,
       corner:"이번 수학 활동에서 문제를 풀다가 틀렸지만,",
