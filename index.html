@@ -1493,8 +1493,9 @@ function renderGuide(page){
         <p class="lead">준비가 되었다면 아래의 ‘다음’ 버튼을 눌러 주세요.</p>
       </section>`);
   }
+  const picked = state.scales.example;
   const labels = LIKERT_LABELS.map((label, i)=>`<th><b>${i+1}</b><span>${escapeHtml(label).replace(/\n/g,"<br>")}</span></th>`).join("");
-  const cells = [1,2,3,4,5].map(n=>`<td><span class="example-num">${n}</span></td>`).join("");
+  const cells = [1,2,3,4,5].map(n=>`<td><button type="button" class="cell-pick${picked===n?" selected":""}" data-scale="example" data-v="${n}" aria-label="${n}점"></button></td>`).join("");
   return screen("screen-scale", `
     <div class="survey-copy">
       <h2>응답 방법 안내</h2>
@@ -1895,7 +1896,7 @@ function attachPageEvents(page){
     const el = document.getElementById("f_attribution");
     el.oninput = ()=>{ state.attribution = el.value; updateNavValidity(); };
   }
-  if(page.type==="scale"){
+  if(page.type==="scale" || page.id==="guide-scale"){
     document.querySelectorAll(".cell-pick").forEach(btn=>{
       btn.onclick = ()=>{
         const id = btn.dataset.scale;
