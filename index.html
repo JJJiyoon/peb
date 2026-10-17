@@ -2094,6 +2094,7 @@ function buildColumns(){
   add("이름", info.name.trim());
   add("성별", info.gender || "");
   add("성별코드", info.gender==="남자" ? 1 : (info.gender==="여자" ? 2 : ""));
+  add("응답예시", state.scales.example ?? "");
   add("요약", state.summary.trim());
   add("요약_글자수", countChars(state.summary));
   add("요약_어절수", countWords(state.summary));
