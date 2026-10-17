@@ -783,6 +783,9 @@
   }
   .memo .tag{flex:none; font-size:30px; font-weight:750; color:var(--navy); background:#fff; border-radius:999px; padding:4px 8px;}
   .memo p{font-size:30px; line-height:1.5; white-space:nowrap; margin:0;}
+  .memo.is-wrap{flex-wrap:wrap; white-space:normal; overflow-x:visible;}
+  .memo.is-wrap p{white-space:normal;}
+  .survey-note{margin-top:14px; font-size:24px; line-height:1.5;}
 
   .scale-page{flex:1; min-height:0; display:flex; flex-direction:column; gap:10px; overflow:auto;}
   .likert6{
@@ -867,6 +870,7 @@
     border:2px solid #1e4d38; background:#fff; cursor:pointer; padding:0;
   }
   .cell-pick.selected{background:#1e4d38; box-shadow:inset 0 0 0 7px #fff;}
+  .example-num{font-size:22px; font-weight:800; color:#1e4d38;}
   .screen-quiz .quiz-head .question{
     font-size:25px;
     white-space:normal;
@@ -1004,10 +1008,10 @@ const BEHAVE_ITEMS = [
   { id:"b1", text:"다음번에는 더 열심히 해야겠다는 마음이 들었다." },
   { id:"b2", text:"다음에는 더 잘 준비해야 한다는 것을 느꼈다." },
   { id:"b3", text:"왜 틀렸는지 이해하려고 노력했다." },
-  { id:"b4", text:"어떻게 하면 다음에 더 잘할 수 있을지 자세히 알아보려고 노력했다." },
-  { id:"b5", text:"다음에 어떤 부분에 노력을 기울여야 하는지 알게 됐다." },
-  { id:"b6", text:"어떤 부분에서 실수했는지 생각했다." },
-  { id:"b7", text:"내가 더 발전시켜야 할 부분을 알려줬다." }
+  { id:"b4", text:"어떻게 하면 다음에 더 잘할 수 있을지 자세히 알아보고 노력했다." },
+  { id:"b5", text:"다음에는 어떤 부분에 노력을 기울여야 하는지 알게 되었다." },
+  { id:"b6", text:"어떤 부분에서 내가 실수했는지 생각해보았다." },
+  { id:"b7", text:"내가 더 발전시켜야 할 부분을 알려주었다." }
 ];
 
 const LIKERT_LABELS = ["전혀\n그렇지\n않다", "그렇지\n않다", "보통이다", "그렇다", "매우\n그렇다"];
@@ -1077,6 +1081,8 @@ const state = {
   studentInfo: { number:"", school:"", grade:"", classroom:"", name:"", gender:"" },
   summary: "",
   sentence: "",
+  attribution: "",
+  retryAsked: false,
   scales: {},
   math: {},
   dwellMs: {},
@@ -1144,7 +1150,7 @@ const CHARACTERS = {
 function learnPages(group){
   const exp = group === "exp";
   const stem = exp
-    ? "틀린 문제로부터 배울 수 있는 이유는"
+    ? "나는 실수에서 배울 수 있는 이유는"
     : "안전한 미디어 사용이 나를 지키는 데 도움이 되는 이유는";
   const pages = exp ? [
     { type:"read", id:"exp-read", label:"학습 내용", dwell:true,
@@ -1157,7 +1163,7 @@ function learnPages(group){
       kicker:"전문가의 조언", title:"전문가의 조언: 다섯 가지 핵심 생각",
       advice:"새로운 내용을 배우는 동안 실수가 생기는 것은 특별한 일이 아닙니다. 실수는 지금의 생각이나 풀이에서 더 살펴볼 부분을 보여 줄 수 있습니다. 실수는 개선할 곳을 드러내어 학습 과정을 안내하는 정보가 됩니다. 그래서 실수는 가치 있는 학습 기회가 될 수 있습니다.",
       ideas:[
-        "틀린 문제는 중요한 정보를 알려 줍니다.",
+        "틀린문제는 중요한 정보를 알려 줍니다.",
         "틀린 문제는 나아지는 데 도움을 줄 수 있습니다.",
         "틀린 문제는 아직 더 배울 수 있는 것을 보여 줍니다.",
         "문제를 풀고 나서 문제가 맞았는지·틀렸는지 아는 것은 내가 더 배울 수 있는 정보를 줍니다.",
@@ -1169,10 +1175,10 @@ function learnPages(group){
         { name:"지우의 이야기", body:"분수 덧셈 문제를 푸는 문제에서, 지우는 분모끼리도 더하면 된다고 생각했습니다. 풀이를 보며 자신의 생각이 분수 덧셈의 원리와 다르다는 것을 알게 되었습니다.", said:"수학 문제를 풀고 틀렸기 때문에 내가 헷갈리는 부분을 알게 되었어. 문제를 틀린 과정이 있어서 분수의 원리를 더 정확하게 알게 됐어." },
         { name:"도윤의 이야기", body:"소수의 덧셈 문제를 푸는 문제에서, 도윤이의 답은 정답과 달랐습니다. 도윤이는 자신의 풀이과정과 정답의 풀이과정(해설)을 비교해보았고, 도윤이는 자신이 여태 소수점을 맞추는 방법을 다르게 생각했다는 것을 알게 되었습니다.", said:"나의 풀이는 내가 어떤 방법을 다르게 생각했는지 알려 줬어. 문제를 틀려서 내가 어느 부분에서 다르게 풀었는지 이해할 수 있는 부분을 보여 줄 수 있어." }
       ] },
-    { type:"summary", id:"exp-summary", label:"요약하기", dwell:true,
-      kicker:"요약하기", title:"배운 내용을 요약하기",
-      lead:"위에서 읽은 내용을 떠올리며 아래 두 가지를 모두 포함하여 2–4문장으로 써 보세요.",
-      prompts:["왜 실수는 학습의 자연스러운 일부일 수 있나요?","실수는 개인이 나아지는 데 어떻게 도움을 줄 수 있나요?"] },
+    { type:"summary", id:"exp-summary", label:"정리하기", dwell:true,
+      kicker:"정리하기", title:"내 말로 정리하기",
+      lead:"위에서 읽은 내용을 떠올리며 아래 문장에 이어서 2~4문장을 작성해보세요.",
+      starter:"실수는 학습의 자연스러운 과정일 수 있습니다." },
     { type:"sentence", id:"exp-sentence", label:"한 문장", dwell:true, stem }
   ] : [
     { type:"read", id:"ctrl-read", label:"학습 내용", dwell:true,
@@ -1199,15 +1205,15 @@ function learnPages(group){
       ] },
     { type:"summary", id:"ctrl-summary", label:"정리하기", dwell:true,
       kicker:"정리하기", title:"내 말로 정리하기",
-      lead:"위에서 읽은 내용을 떠올리며 아래 두 가지를 모두 포함하여 2–4문장으로 써 보세요.",
-      prompts:["왜 안전한 미디어 사용은 일상생활의 자연스러운 일부인가요?","안전한 미디어 사용은 자신을 지키는 데 어떻게 도움을 줄 수 있나요?"] },
+      lead:"위에서 읽은 내용을 떠올리며 아래 문장에 이어서 2~4문장을 작성해보세요.",
+      starter:"안전한 미디어 사용은 나를 지키는 데 도움을 줍니다." },
     { type:"sentence", id:"ctrl-sentence", label:"한 문장", dwell:true, stem }
   ];
   pages.push({
     type:"scale", id:"check", label:"질문", optional:false,
-    heading:"다. 긍정적 오류 신념 (조작점검)",
     prompt:"<틀린 문제에 대한 나의 생각>",
     intro:"수학 문제를 풀다가 틀렸을 때, 틀린 문제에 대해 지금 어떻게 생각하는지 답해주세요.",
+    note:"다음 장에도 설문이 이어집니다.",
     corner:"나는 수학 문제를 풀다가 틀렸을 때,",
     items:CHECK_ITEMS
   });
@@ -1222,25 +1228,14 @@ function chunkItems(items, size){
 
 function surveyPages(){
   const pages = [{
-    type:"scale", id:"reason", label:"이유", optional:true,
-    intro:"내가 생각한 이유에 대해 아래 자신이 작성한 ‘그 이유’는 방금 밑줄을 그었거나 마음속으로 떠올린 가장 중요한 이유를 말합니다. 이유 한 가지를 생각하며 답해 주세요.\n이유가 떠오르지 않거나 답하고 싶지 않으면 아래 문항을 건너뛸 수 있습니다. 응답을 마쳤다면 다음 안내가 나올 때까지 기다려 주세요.",
+    type:"scale", id:"reason", label:"이유", optional:true, showReason:true,
+    intro:"내가 생각한 이유에 대해 아래 자신이 작성한 ‘그 이유’는 방금 밑줄을 그었거나 마음속으로 떠올린 가장 중요한 이유를 말합니다. 이유 한 가지를 생각하며 답해 주세요.\n이유가 떠오르지 않거나 답하고 싶지 않으면 아래 문항을 건너뛸 수 있습니다.\n응답을 마쳤다면 다음 안내가 나올 때까지 기다려 주세요.",
     corner:"문항",
     items:REASON_ITEMS
   }];
-  chunkItems(ADAPT_ITEMS, 4).forEach((items, i)=>{
+  chunkItems([...ADAPT_ITEMS, ...BEHAVE_ITEMS], 4).forEach((items, i)=>{
     pages.push({
-      type:"scale", id:"adapt"+(i+1), label:"적응적 오류반응", optional:true,
-      heading:"차. 적응적 오류반응",
-      prompt:"<이번 활동에서 문제를 틀렸을 때>",
-      intro:ADAPT_INTRO,
-      corner:"이번 수학 활동에서 문제를 풀다가 틀렸지만,",
-      items
-    });
-  });
-  chunkItems(BEHAVE_ITEMS, 4).forEach((items, i)=>{
-    pages.push({
-      type:"scale", id:"behave"+(i+1), label:"적응적 오류반응", optional:true,
-      heading:"차. 적응적 오류반응",
+      type:"scale", id:"post"+(i+1), label:"설문", optional:true,
       prompt:"<이번 활동에서 문제를 틀렸을 때>",
       intro:ADAPT_INTRO,
       corner:"이번 수학 활동에서 문제를 풀다가 틀렸지만,",
@@ -1251,16 +1246,15 @@ function surveyPages(){
 }
 
 function buildPages(group){
-  const learn = learnPages(group);
-  const cut = learn.findIndex(p=>p.id==="check");
-  const head = cut>=0 ? learn.slice(0, cut) : learn;
-  const tail = cut>=0 ? learn.slice(cut) : [];
   return [
     { type:"info", id:"info", label:"시작" },
-    ...head,
+    { type:"guide", id:"guide-scale", label:"응답 방법" },
+    { type:"guide", id:"guide-start", label:"연구 시작" },
+    ...learnPages(group),
     { type:"goal", id:"goal", label:"목표" },
-    ...tail,
     ...PROBLEMS.map((p,i)=>({ type:"problem", id:p.id, data:p, index:i, label:`문제 ${p.no}`, memo:true })),
+    { type:"feedback", id:"feedback", label:"결과" },
+    { type:"attribution", id:"attribution", label:"이유 작성" },
     ...surveyPages(),
     { type:"closing", id:"closing", label:"마무리" }
   ];
@@ -1344,8 +1338,12 @@ function render(){
   stageEl.dataset.screen = page.type;
   renderChrome(currentPage+1, PAGES.length, page.label);
   let html = memoHtml(page);
+  if(page.showReason && state.attribution.trim()){
+    html += `<aside class="memo is-wrap"><span class="tag">내가 쓴 이유</span><p>${escapeHtml(state.attribution.trim())}</p></aside>`;
+  }
   switch(page.type){
     case "info": html += renderInfo(); break;
+    case "guide": html += renderGuide(page); break;
     case "read": html += renderRead(page); break;
     case "expert": html += renderExpert(page); break;
     case "stories": html += renderStories(page); break;
@@ -1353,6 +1351,8 @@ function render(){
     case "sentence": html += renderSentence(page); break;
     case "scale": html += renderScale(page); break;
     case "goal": html += renderGoal(); break;
+    case "feedback": html += renderFeedback(); break;
+    case "attribution": html += renderAttribution(); break;
     case "problem": html += renderProblem(page.data, state.math[page.data.id], false); break;
     case "finish": html += renderFinish(); break;
     case "closing": html += renderClosing(); break;
@@ -1482,6 +1482,33 @@ function renderInfo(){
     </section>`);
 }
 
+function renderGuide(page){
+  if(page.id==="guide-start"){
+    return screen("screen-stack", `
+      <header class="stack-head"><div><h1>연구 시작 안내</h1></div></header>
+      <section class="panel prose">
+        <p class="lead">이제 연구 활동을 시작합니다.</p>
+        <p class="lead">앞으로 제시되는 안내를 잘 읽고, 각 활동에 따라 응답해 주세요.</p>
+        <p class="lead">생각이나 느낌을 묻는 문항에는 정답이 없으므로, 자신의 생각에 따라 응답해 주세요.</p>
+        <p class="lead">준비가 되었다면 아래의 ‘다음’ 버튼을 눌러 주세요.</p>
+      </section>`);
+  }
+  const labels = LIKERT_LABELS.map((label, i)=>`<th><b>${i+1}</b><span>${escapeHtml(label).replace(/\n/g,"<br>")}</span></th>`).join("");
+  const cells = [1,2,3,4,5].map(n=>`<td><span class="example-num">${n}</span></td>`).join("");
+  return screen("screen-scale", `
+    <div class="survey-copy">
+      <h2>응답 방법 안내</h2>
+      <p>다음 문항을 읽고, 자신의 생각이나 느낌과 가장 가까운 숫자 하나를 선택해 주세요.</p>
+    </div>
+    <div class="survey-table-wrap">
+      <table class="survey-table">
+        <thead><tr><th>문항(예시)</th>${labels}</tr></thead>
+        <tbody><tr><td>나는 음악을 듣는 것을 좋아한다.</td>${cells}</tr></tbody>
+      </table>
+    </div>
+    <p class="survey-note">정답은 없습니다. 다른 사람의 생각이 아니라 자신의 생각과 느낌을 솔직하게 답해 주세요.</p>`);
+}
+
 function renderRead(page){
   return screen("screen-stack", `
     <header class="stack-head">
@@ -1533,13 +1560,12 @@ function renderSummary(page){
     <header class="stack-head">
       <div>
         <h1>${page.title}</h1>
-        <p class="stack-lead">두 질문을 모두 담아 2–4문장으로 적어 주세요.</p>
       </div>
     </header>
     <section class="panel write-panel is-compact">
       <p class="lead">${escapeHtml(page.lead)}</p>
-      <ul class="prompts">${page.prompts.map(q=>`<li>${escapeHtml(q)}</li>`).join("")}</ul>
-      <textarea id="f_summary" placeholder="여기에 2–4문장으로 적어 주세요.">${escapeHtml(state.summary)}</textarea>
+      ${page.starter ? `<p class="stem">${escapeHtml(page.starter)}</p>` : `<ul class="prompts">${(page.prompts||[]).map(q=>`<li>${escapeHtml(q)}</li>`).join("")}</ul>`}
+      <textarea id="f_summary" placeholder="여기에 2~4문장으로 적어 주세요.">${escapeHtml(state.summary)}</textarea>
     </section>`);
 }
 
@@ -1577,12 +1603,38 @@ function renderScale(page){
         </thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>`);
+    </div>
+    ${page.note ? `<p class="survey-note">${escapeHtml(page.note)}</p>` : ""}`);
 }
 
 function renderGoal(){
   return screen("screen-message", `
     <p class="goal-banner">이번 활동에서는 수학 문제 15개를 풉니다. 이번 활동의 목표는 <strong>15문제 중 10문제 이상</strong>을 맞히는 것입니다. 목표에 도달하려고 노력해보세요.</p>`);
+}
+
+function correctCount(){
+  return PROBLEMS.filter(p=>grade(p, state.math[p.id])===true).length;
+}
+
+function renderFeedback(){
+  const n = correctCount();
+  const text = n >= CONFIG.PASS_THRESHOLD
+    ? "목표를 달성했습니다."
+    : `15문제 중 ${n}문제를 맞혔습니다. 이번 활동의 목표는 10문제 이상을 맞히는 것이었으며, 이번 결과는 목표에 도달하지 못했습니다.`;
+  return screen("screen-message", `<p class="goal-banner">${escapeHtml(text)}</p>`);
+}
+
+function renderAttribution(){
+  return screen("screen-stack", `
+    <header class="stack-head">
+      <div>
+        <h1>이유를 적어 주세요</h1>
+      </div>
+    </header>
+    <section class="panel write-panel is-compact">
+      <p class="lead">이번 수학 과제에서 이러한 결과가 나온 이유는 무엇이라고 생각하나요? 자신의 말로 자유롭게 적어 주세요. 여러가지 이유가 떠오른다면 가장 중요하다고 생각하는 이유 한 가지만 적어주세요. 그리고 마음속으로 작성한 이유 중 가장 중요한 이유 한 가지만 떠올려 주세요.</p>
+      <textarea id="f_attribution" placeholder="가장 중요한 이유 한 가지를 적어 주세요.">${escapeHtml(state.attribution)}</textarea>
+    </section>`);
 }
 
 function renderClosing(){
@@ -1750,15 +1802,10 @@ function openModal(correct, problemId){
   }
 }
 
-function lastProblemIndex(){
-  let idx = -1;
-  PAGES.forEach((p,i)=>{ if(p.type==="problem") idx = i; });
-  return idx;
-}
-function continueAfterProblems(){
+function continueAfterRetry(){
   closeModal();
   retryMode = false;
-  const idx = lastProblemIndex();
+  const idx = PAGES.findIndex(p=>p.id==="feedback");
   if(idx < 0 || idx >= PAGES.length-1){
     finishActivity();
     return;
@@ -1773,7 +1820,7 @@ function advanceRetry(){
     retryIndex++;
     render();
   } else {
-    continueAfterProblems();
+    continueAfterRetry();
   }
 }
 
@@ -1790,13 +1837,15 @@ function openRetryChoice(){
       </div>
     </div>`;
   document.getElementById("btnYesRetry").onclick = ()=>{
+    state.retryAsked = true;
     closeModal();
     if(!retryMode) commitPageTime();
     startRetry();
   };
   document.getElementById("btnNoRetry").onclick = ()=>{
+    state.retryAsked = true;
     if(!retryMode) commitPageTime();
-    continueAfterProblems();
+    continueAfterRetry();
   };
 }
 
@@ -1809,7 +1858,7 @@ function startRetry(){
         <p class="msg">다시 풀 틀린 문제가 없습니다.</p>
         <div class="modal-actions end"><button type="button" class="primary" id="btnNoWrong">알겠습니다</button></div>
       </div></div>`;
-    document.getElementById("btnNoWrong").onclick = ()=>continueAfterProblems();
+    document.getElementById("btnNoWrong").onclick = ()=>continueAfterRetry();
     return;
   }
   retryMode = true;
@@ -1841,6 +1890,10 @@ function attachPageEvents(page){
   if(page.type==="sentence"){
     const el = document.getElementById("f_sentence");
     el.oninput = ()=>{ state.sentence = el.value; updateNavValidity(); };
+  }
+  if(page.type==="attribution"){
+    const el = document.getElementById("f_attribution");
+    el.oninput = ()=>{ state.attribution = el.value; updateNavValidity(); };
   }
   if(page.type==="scale"){
     document.querySelectorAll(".cell-pick").forEach(btn=>{
@@ -1885,6 +1938,7 @@ function isCurrentPageValid(){
     }
     case "summary": return state.summary.trim().length>0;
     case "sentence": return state.sentence.trim().length>0;
+    case "attribution": return state.attribution.trim().length>0;
     case "scale":
       if(page.optional) return true;
       return page.items.every(item=>Number.isFinite(state.scales[item.id]));
@@ -1942,8 +1996,7 @@ function renderNav(page){
         return;
       }
       showHint = false;
-      const leavingLastProblem = page.type==="problem" && (isLast || PAGES[currentPage+1].type!=="problem");
-      if(leavingLastProblem){
+      if(page.id==="feedback" && !state.retryAsked){
         openRetryChoice();
         return;
       }
@@ -2047,6 +2100,9 @@ function buildColumns(){
   add("기억문장", state.sentence.trim());
   add("기억문장_글자수", countChars(state.sentence));
   add("기억문장_어절수", countWords(state.sentence));
+  add("귀인", state.attribution.trim());
+  add("귀인_글자수", countChars(state.attribution));
+  add("귀인_어절수", countWords(state.attribution));
   CHECK_ITEMS.forEach((it,i)=>add("조작점검"+(i+1), state.scales[it.id] ?? ""));
   add("조작점검_응답수", CHECK_ITEMS.filter(it=>Number.isFinite(state.scales[it.id])).length);
   add("조작점검_평균", scaleMean(CHECK_ITEMS));
@@ -2117,6 +2173,8 @@ function buildColumns(){
   add("목표기준", CONFIG.PASS_THRESHOLD);
   add("목표도달", firstCorrect >= CONFIG.PASS_THRESHOLD ? 1 : 0);
   add("체류초_정보", pageSec(["info"]));
+  add("체류초_응답안내", pageSec(["guide-scale"]));
+  add("체류초_시작안내", pageSec(["guide-start"]));
   add("체류초_읽기", pageSec(["exp-read","ctrl-read"]));
   add("체류초_전문가", pageSec(["exp-expert","ctrl-expert"]));
   add("체류초_이야기", pageSec(["exp-stories","ctrl-stories"]));
@@ -2124,11 +2182,12 @@ function buildColumns(){
   add("체류초_한문장", pageSec(["exp-sentence","ctrl-sentence"]));
   add("체류초_조작점검", pageSec(["check"]));
   add("체류초_목표", pageSec(["goal"]));
+  add("체류초_피드백", pageSec(["feedback"]));
+  add("체류초_귀인작성", pageSec(["attribution"]));
   add("체류초_이유", pageSec(["reason"]));
-  add("체류초_적응1", pageSec(["adapt1"]));
-  add("체류초_적응2", pageSec(["adapt2"]));
-  add("체류초_행동1", pageSec(["behave1"]));
-  add("체류초_행동2", pageSec(["behave2"]));
+  add("체류초_사후1", pageSec(["post1"]));
+  add("체류초_사후2", pageSec(["post2"]));
+  add("체류초_사후3", pageSec(["post3"]));
   add("체류초_마무리", pageSec(["closing"]));
   add("체류초_글합계", pageSec(["exp-read","ctrl-read","exp-expert","ctrl-expert","exp-stories","ctrl-stories","exp-summary","ctrl-summary","exp-sentence","ctrl-sentence","check"]));
   add("전체소요초", state.startedAt ? secOf(Date.now()-state.startedAt) : "");
