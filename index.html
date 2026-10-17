@@ -1228,8 +1228,8 @@ function chunkItems(items, size){
 function surveyPages(){
   const pages = [{
     type:"scale", id:"reason", label:"이유", optional:true, showReason:true,
-    intro:"내가 생각한 이유에 대해 아래 자신이 작성한 ‘그 이유’는 방금 밑줄을 그었거나 마음속으로 떠올린 가장 중요한 이유를 말합니다. 이유 한 가지를 생각하며 답해 주세요.\n이유가 떠오르지 않거나 답하고 싶지 않으면 아래 문항을 건너뛸 수 있습니다.\n응답을 마쳤다면 다음 안내가 나올 때까지 기다려 주세요.",
-    corner:"문항",
+    intro:"수학 목표 달성 결과를 보고, 이러한 결과가 나온 이유를 작성해보았습니다. 내가 생각한 이유는 이전 페이지에서 작성했거나 마음속으로 떠올린 가장 중요한 이유를 말합니다.",
+    corner:"내가 수학 목표 달성에 실패 또는 성공한 이유는",
     items:REASON_ITEMS
   }];
   chunkItems([...ADAPT_ITEMS, ...BEHAVE_ITEMS], 4).forEach((items, i)=>{
