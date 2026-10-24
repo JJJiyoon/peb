@@ -2195,9 +2195,90 @@ function buildColumns(){
   return cols;
 }
 
+function scaleList(items){
+  return items.map(it=>state.scales[it.id] ?? "").join("/");
+}
+function problemRecord(tag, record){
+  return {
+    응답: record[tag+"_응답"],
+    선택: record[tag+"_선택"],
+    정오: record[tag+"_정오"],
+    풀이초: record[tag+"_풀이초"],
+    재시도횟수: record[tag+"_재시도횟수"],
+    재시도응답: record[tag+"_재시도응답"],
+    재시도정오: record[tag+"_재시도정오"]
+  };
+}
 function buildPayload(){
   const cols = buildColumns();
+  const record = {};
+  cols.forEach(([name, value])=>{ record[name] = value; });
+  const info = state.studentInfo;
+  const mc = {};
+  const short = {};
+  PROBLEMS.forEach(p=>{
+    const tag = "문제"+String(p.no).padStart(2,"0");
+    const item = problemRecord(tag, record);
+    if(p.kind==="mc") mc[tag] = item;
+    else short[tag] = item;
+  });
+  const dwell = {};
+  cols.forEach(([name, value])=>{
+    if(name.indexOf("체류초_")===0 || name==="전체소요초") dwell[name] = value;
+  });
   return {
+    submittedAt: record["제출시각"],
+    studentInfo: {
+      school: info.school.trim(),
+      grade: info.grade.trim(),
+      classroom: info.classroom.trim(),
+      name: info.name.trim(),
+      number: info.number.trim(),
+      gender: info.gender || ""
+    },
+    selfVerbal: state.sentence.trim(),
+    mcAnswers: mc,
+    shortAnswers: {
+      요약: state.summary.trim(),
+      주관식: short,
+      성별: info.gender || "",
+      성별코드: record["성별코드"],
+      번호: info.number.trim(),
+      집단: record["집단"],
+      집단명: record["집단명"],
+      화면노출: record["화면노출"],
+      입력코드: record["입력코드"],
+      응답예시: record["응답예시"],
+      설문: {
+        조작점검: CHECK_ITEMS.map(it=>state.scales[it.id] ?? ""),
+        이유: REASON_ITEMS.map(it=>state.scales[it.id] ?? ""),
+        사후적응: ADAPT_ITEMS.map(it=>state.scales[it.id] ?? ""),
+        사후행동: BEHAVE_ITEMS.map(it=>state.scales[it.id] ?? "")
+      },
+      체류: dwell,
+      다시풀기실시: record["다시풀기실시"],
+      재시도정답수: record["재시도정답수"],
+      목표도달: record["목표도달"],
+      전체: record
+    },
+    totalCorrect: record["최초정답수"]==="" ? 0 : record["최초정답수"],
+    totalItems: PROBLEMS.length,
+    attributionOpen: state.attribution.trim(),
+    cdsii: [
+      "조작점검:"+scaleList(CHECK_ITEMS),
+      "이유:"+scaleList(REASON_ITEMS),
+      "사후적응:"+scaleList(ADAPT_ITEMS),
+      "사후행동:"+scaleList(BEHAVE_ITEMS),
+      "응답예시:"+(state.scales.example ?? ""),
+      "성별:"+(info.gender || ""),
+      "번호:"+info.number.trim(),
+      "집단:"+(record["집단명"] || ""),
+      "코드:"+(record["입력코드"] || ""),
+      "화면:"+(record["화면노출"] || ""),
+      "다시풀기:"+record["다시풀기실시"],
+      "목표도달:"+record["목표도달"]
+    ],
+    reviewedWrongAnswers: !!state.didRetry,
     headers: cols.map(col=>col[0]),
     values: cols.map(col=>col[1])
   };
