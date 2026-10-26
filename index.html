@@ -970,7 +970,7 @@
    - 정답이 null 인 문제는 원본 문서에서 숫자·보기가 빠져 응답만 기록합니다.
    ====================================================================== */
 const CONFIG = {
-  GAS_ENDPOINT: "https://script.google.com/macros/s/AKfycbwurvMWE7H6GZqEcqmP796c3RllDO0K60im3gu_5o7igiFmf2M3wE9iA01dsSb7wZTd/exec",
+  GAS_ENDPOINT: "https://script.google.com/macros/s/AKfycbxMEfiJPTld3PLIUhqig5uEa9vybNNxV3KR-bHkFYnSOCZqPsFOVEgxInROHj-n9xs9hw/exec", // 2026-10-26 제공받은 연구 자료 수집 웹 앱 주소
   PASS_THRESHOLD: 10,
   DWELL_MS: 2 * 60 * 1000,
   DWELL_DEFAULT_SEC: 120,
@@ -1091,7 +1091,12 @@ const state = {
   startedAt: null,
   didRetry: false,
   submitted: false,
-  thanks: false
+  thanks: false,
+  sending: false,
+  submitError: "",
+  initialAnswers: null,
+  retryChoice: null,
+  reviewEntered: false
 };
 
 let PAGES = [];
@@ -1105,6 +1110,67 @@ let retryIndex = 0;
 let retryDraft = {};
 let retryStampIndex = -1;
 let retryEnteredAt = 0;
+let retryLastCheckAt = 0;
+let activeVisit = null;
+const screenVisits = [];
+const allAttempts = [];
+let pendingPayload = null;
+let submissionId = null;
+let receiptToken = null;
+
+function makeUuid(){
+  if(globalThis.crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  if(!globalThis.crypto || !crypto.getRandomValues) throw new Error("보안 난수 기능이 필요합니다.");
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = [...bytes].map(b=>b.toString(16).padStart(2,"0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+function freezeInitialAnswers(){
+  if(state.initialAnswers) return;
+  state.initialAnswers = {};
+  PROBLEMS.forEach(p=>{
+    const saved = state.math[p.id] || {};
+    state.initialAnswers[p.id] = p.kind === "mc"
+      ? {selected:saved.selected ?? null}
+      : {value:String(saved.value ?? "")};
+  });
+}
+function initialMath(){ return state.initialAnswers || state.math; }
+function updateVisibleTime(now){
+  if(!activeVisit) return;
+  if(activeVisit.visibleSince != null) activeVisit.visible_ms += Math.max(0,now-activeVisit.visibleSince);
+  activeVisit.visibleSince = document.visibilityState === "hidden" ? null : now;
+}
+function closeVisit(){
+  if(!activeVisit) return;
+  const now = Date.now();
+  updateVisibleTime(now);
+  const duration = Math.max(0,now-activeVisit.enteredMs);
+  screenVisits.push({
+    visit_no:screenVisits.length+1, screen_id:activeVisit.screen_id,
+    screen_type:activeVisit.screen_type, problem_id:activeVisit.problem_id,
+    phase:activeVisit.phase, entered_at:new Date(activeVisit.enteredMs).toISOString(),
+    exited_at:new Date(now).toISOString(), duration_ms:duration,
+    visible_ms:Math.min(duration,activeVisit.visible_ms)
+  });
+  activeVisit = null;
+}
+function enterVisit(page,isReview=false){
+  const identity = isReview ? "retry-"+page.data.id : page.id;
+  if(activeVisit && activeVisit.screen_id===identity) return;
+  closeVisit();
+  const now=Date.now();
+  const phase=isReview ? "review" : page.type==="problem" ? "initial"
+    : ["reason","post1","post2","post3","attribution"].includes(page.id) ? "survey"
+    : page.dwell || page.id==="check" ? "lesson" : "other";
+  activeVisit={screen_id:identity,screen_type:isReview?"retry":page.type,
+    problem_id:page.data ? page.data.id : null,phase,enteredMs:now,
+    visible_ms:0,visibleSince:document.visibilityState==="hidden"?null:now};
+}
+document.addEventListener("visibilitychange",()=>updateVisibleTime(Date.now()));
 
 const stageEl = document.getElementById("stage");
 const headEl = document.getElementById("stageHead");
@@ -1329,11 +1395,14 @@ function render(){
   clearInterval(dwellTimer);
   closeModal();
   stageEl.classList.remove("is-end");
-  if(!state.group){ renderCode(); return; }
+  if(!state.group){ closeVisit(); renderCode(); return; }
   if(retryMode){ renderRetry(); return; }
-  if(state.submitted){ renderSubmitScreen(); return; }
+  if(state.submitted){ closeVisit(); renderSubmitScreen(); return; }
+  if(state.sending || pendingPayload){ closeVisit(); renderSaveProgress(); return; }
   if(state.thanks){ renderThanks(); return; }
   const page = PAGES[currentPage];
+  if(page.id==="feedback") freezeInitialAnswers();
+  enterVisit(page);
   stageEl.dataset.screen = page.type;
   renderChrome(currentPage+1, PAGES.length, page.label);
   let html = memoHtml(page);
@@ -1423,6 +1492,7 @@ function renderCode(){
     </section>`);
   navEl.innerHTML = "";
   const input = document.getElementById("f_code");
+  input.maxLength = 100;
   const go = ()=>submitCode(input.value);
   document.getElementById("btnCode").onclick = go;
   input.addEventListener("keydown", (e)=>{ if(e.key === "Enter") go(); });
@@ -1447,7 +1517,7 @@ function enterWithCode(code, group){
 
 function chooseGroup(group){
   state.group = group;
-  if(!state.startedAt) state.startedAt = Date.now();
+  if(!state.startedAt){ state.startedAt = Date.now(); submissionId=makeUuid(); receiptToken=makeUuid()+makeUuid(); }
   currentPage = 0;
   pageEnteredAt = Date.now();
   showHint = false;
@@ -1613,7 +1683,7 @@ function renderGoal(){
 }
 
 function correctCount(){
-  return PROBLEMS.filter(p=>grade(p, state.math[p.id])===true).length;
+  return PROBLEMS.filter(p=>grade(p, initialMath()[p.id])===true).length;
 }
 
 function renderFeedback(){
@@ -1703,9 +1773,12 @@ function renderSubmitScreen(){
 
 function renderRetry(){
   const item = retryList[retryIndex];
+  state.reviewEntered = true;
+  enterVisit({id:"retry-"+item.id,type:"retry",data:item},true);
   if(retryStampIndex !== retryIndex){
     retryStampIndex = retryIndex;
     retryEnteredAt = Date.now();
+    retryLastCheckAt = retryEnteredAt;
   }
   stageEl.dataset.screen = "retry";
   renderChrome(retryIndex+1, retryList.length, "다시 풀기");
@@ -1730,6 +1803,7 @@ function renderRetry(){
   });
   const input = document.getElementById("f_answer");
   if(input){
+    input.maxLength = 2000;
     input.oninput = ()=>{ retryDraft[item.id] = input.value; };
   }
   document.getElementById("navPrev").onclick = ()=>{
@@ -1757,7 +1831,13 @@ function checkRetry(item){
   const saved = item.kind==="mc" ? { selected:picked } : { value };
   const ok = grade(item, saved);
   const log = state.retryLog[item.id] || { back:0, skip:0, correct:false, responses:[] };
-  log.responses.push({ ...saved, isCorrect: ok, at: new Date().toISOString(), ms: Date.now()-retryEnteredAt });
+  const now = Date.now();
+  const event = {event_id:makeUuid(),problem_id:item.id,attempt_no:log.responses.length+1,
+    ...saved,at:new Date(now).toISOString(),elapsed_ms:Math.max(0,now-retryEnteredAt),
+    duration_ms:Math.max(0,now-retryLastCheckAt)};
+  retryLastCheckAt = now;
+  allAttempts.push(event);
+  log.responses.push({ ...saved, isCorrect: ok, at:event.at, ms:event.elapsed_ms });
   state.retryLog[item.id] = log;
   if(ok===true){
     log.correct = true;
@@ -1838,12 +1918,14 @@ function openRetryChoice(){
     </div>`;
   document.getElementById("btnYesRetry").onclick = ()=>{
     state.retryAsked = true;
+    state.retryChoice = "yes";
     closeModal();
     if(!retryMode) commitPageTime();
     startRetry();
   };
   document.getElementById("btnNoRetry").onclick = ()=>{
     state.retryAsked = true;
+    state.retryChoice = "no";
     if(!retryMode) commitPageTime();
     continueAfterRetry();
   };
@@ -1851,7 +1933,7 @@ function openRetryChoice(){
 
 function startRetry(){
   state.didRetry = true;
-  retryList = PROBLEMS.filter(p=>grade(p, state.math[p.id])===false);
+  retryList = PROBLEMS.filter(p=>grade(p, initialMath()[p.id])===false);
   if(!retryList.length){
     modalRoot.innerHTML = `
       <div class="modal-back"><div class="modal" role="dialog" aria-modal="true">
@@ -1873,6 +1955,7 @@ function attachPageEvents(page){
   if(page.type==="info"){
     ["number","school","grade","classroom","name"].forEach(key=>{
       const el = document.getElementById("f_"+key);
+      el.maxLength = 200;
       el.oninput = ()=>{ state.studentInfo[key] = el.value; updateNavValidity(); };
     });
     document.querySelectorAll(".gender-btn").forEach(btn=>{
@@ -1885,14 +1968,17 @@ function attachPageEvents(page){
   }
   if(page.type==="summary"){
     const el = document.getElementById("f_summary");
+    el.maxLength = 30000;
     el.oninput = ()=>{ state.summary = el.value; updateNavValidity(); };
   }
   if(page.type==="sentence"){
     const el = document.getElementById("f_sentence");
+    el.maxLength = 30000;
     el.oninput = ()=>{ state.sentence = el.value; updateNavValidity(); };
   }
   if(page.type==="attribution"){
     const el = document.getElementById("f_attribution");
+    el.maxLength = 30000;
     el.oninput = ()=>{ state.attribution = el.value; updateNavValidity(); };
   }
   if(page.type==="scale" || page.id==="guide-scale"){
@@ -1918,6 +2004,7 @@ function attachPageEvents(page){
     });
     const input = document.getElementById("f_answer");
     if(input){
+      input.maxLength = 2000;
       input.oninput = ()=>{
         const prev = state.math[item.id] || {};
         const value = input.value;
@@ -1964,7 +2051,8 @@ function updateNavValidity(){
 
 function renderNav(page){
   clearInterval(dwellTimer);
-  const hidePrev = currentPage===0 && state.groupLocked;
+  // 첫 결과를 본 뒤 최초 풀이로 되돌아가 답을 바꾸지 않도록 경계를 잠급니다.
+  const hidePrev = (currentPage===0 && state.groupLocked) || page.id==="feedback";
   const locked = page.dwell && dwellLeft(page)>0;
   const isLast = currentPage === PAGES.length - 1;
   navEl.innerHTML = `
@@ -2034,272 +2122,120 @@ function commitPageTime(){
   pageEnteredAt = Date.now();
 }
 
-function secOf(ms){
-  if(ms==null || !Number.isFinite(Number(ms))) return "";
-  return Math.round(Number(ms)/10)/100;
-}
-function pageSec(ids){
-  let total = 0;
-  let any = false;
-  ids.forEach(id=>{
-    const ms = state.pageMs[id];
-    if(ms){ total += ms; any = true; }
-  });
-  return any ? secOf(total) : "";
-}
-function countChars(s){
-  return [...String(s||"").trim()].length;
-}
-function countWords(s){
-  const t = String(s||"").trim();
-  return t ? t.split(/\s+/).length : 0;
-}
-function scaleMean(items){
-  const vals = items.map(it=>state.scales[it.id]).filter(v=>Number.isFinite(v));
-  if(!vals.length) return "";
-  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100;
-}
-function answerText(problem, saved){
-  if(!saved) return "";
-  if(problem.kind==="mc"){
-    if(saved.selected==null || Number.isNaN(saved.selected)) return "";
-    return problem.options[saved.selected] || "";
-  }
-  return String(saved.value||"").trim();
-}
-function choiceNo(problem, saved){
-  if(!problem || problem.kind!=="mc" || !saved || saved.selected==null || Number.isNaN(saved.selected)) return "";
-  return saved.selected + 1;
-}
-function markBit(v){
-  if(v===true) return 1;
-  if(v===false) return 0;
-  return "";
-}
-
-function buildColumns(){
-  const cols = [];
-  const add = (name, value)=>cols.push([name, value==null ? "" : value]);
-  const info = state.studentInfo;
-  const behavior = BEHAVE_ITEMS;
-  add("제출시각", new Date().toISOString());
-  add("화면노출", state.expose || "");
-  add("집단", state.group==="exp" ? 1 : (state.group==="ctrl" ? 0 : ""));
-  add("집단명", state.group==="exp" ? "실험" : (state.group==="ctrl" ? "통제" : ""));
-  add("입력코드", state.entryCode || "");
-  add("번호", info.number.trim());
-  add("학교", info.school.trim());
-  add("학년", info.grade.trim());
-  add("반", info.classroom.trim());
-  add("이름", info.name.trim());
-  add("성별", info.gender || "");
-  add("성별코드", info.gender==="남자" ? 1 : (info.gender==="여자" ? 2 : ""));
-  add("응답예시", state.scales.example ?? "");
-  add("요약", state.summary.trim());
-  add("요약_글자수", countChars(state.summary));
-  add("요약_어절수", countWords(state.summary));
-  add("기억문장", state.sentence.trim());
-  add("기억문장_글자수", countChars(state.sentence));
-  add("기억문장_어절수", countWords(state.sentence));
-  add("귀인", state.attribution.trim());
-  add("귀인_글자수", countChars(state.attribution));
-  add("귀인_어절수", countWords(state.attribution));
-  CHECK_ITEMS.forEach((it,i)=>add("조작점검"+(i+1), state.scales[it.id] ?? ""));
-  add("조작점검_응답수", CHECK_ITEMS.filter(it=>Number.isFinite(state.scales[it.id])).length);
-  add("조작점검_평균", scaleMean(CHECK_ITEMS));
-  REASON_ITEMS.forEach((it,i)=>add("이유"+(i+1), state.scales[it.id] ?? ""));
-  add("이유_응답수", REASON_ITEMS.filter(it=>Number.isFinite(state.scales[it.id])).length);
-  add("이유_평균", scaleMean(REASON_ITEMS));
-  ADAPT_ITEMS.forEach((it,i)=>add("사후적응"+(i+1), state.scales[it.id] ?? ""));
-  add("사후적응_평균", scaleMean(ADAPT_ITEMS));
-  behavior.forEach((it,i)=>add("사후행동"+(i+1), state.scales[it.id] ?? ""));
-  add("사후행동_평균", scaleMean(behavior));
-
-  let scored = 0, firstCorrect = 0, firstWrong = 0, unscored = 0;
-  let retryItems = 0, retryCorrect = 0, backSum = 0, skipSum = 0, finalCorrect = 0;
-  PROBLEMS.forEach(p=>{
-    const tag = "문제"+String(p.no).padStart(2,"0");
-    const saved = state.math[p.id] || {};
-    const has = p.kind==="mc"
-      ? saved.selected!=null && !Number.isNaN(saved.selected)
-      : String(saved.value||"").trim().length>0;
-    const ok = has ? grade(p, saved) : null;
-    const log = state.retryLog[p.id];
-    const responses = log && log.responses ? log.responses : [];
-    const last = responses.length ? responses[responses.length-1] : null;
-    add(tag+"_응답", answerText(p, saved));
-    add(tag+"_선택", choiceNo(p, saved));
-    add(tag+"_정오", markBit(ok));
-    add(tag+"_풀이초", has ? secOf(saved.responseTimeMs||0) : "");
-    add(tag+"_재시도횟수", log ? responses.length : "");
-    if(last){
-      const retrySaved = p.kind==="mc" ? { selected:last.selected } : { value:last.value||"" };
-      add(tag+"_재시도응답", answerText(p, retrySaved));
-      add(tag+"_재시도정오", markBit(last.isCorrect));
-    }else{
-      add(tag+"_재시도응답", "");
-      add(tag+"_재시도정오", "");
-    }
-    add(tag+"_재시도_돌아가기", log ? (log.back ? 1 : 0) : "");
-    add(tag+"_재시도_건너뛰기", log ? (log.skip ? 1 : 0) : "");
-
-    const keyed = p.kind==="mc" ? p.answerIndex!=null : p.answer!=null;
-    if(!keyed) unscored++;
-    else{
-      scored++;
-      if(ok===true) firstCorrect++;
-      else if(ok===false) firstWrong++;
-      if(ok===true || (last && last.isCorrect===true)) finalCorrect++;
-    }
-    if(log){
-      retryItems++;
-      if(last && last.isCorrect===true) retryCorrect++;
-      backSum += log.back ? 1 : 0;
-      skipSum += log.skip ? 1 : 0;
-    }
-  });
-
-  add("채점문항수", scored);
-  add("최초정답수", firstCorrect);
-  add("최초오답수", firstWrong);
-  add("미채점문항수", unscored);
-  add("최초정답률", scored ? Math.round(firstCorrect/scored*10000)/100 : "");
-  add("다시풀기실시", state.didRetry ? 1 : 0);
-  add("재시도문항수", retryItems);
-  add("재시도정답수", retryCorrect);
-  add("재시도_돌아가기합", backSum);
-  add("재시도_건너뛰기합", skipSum);
-  add("재시도후정답수", finalCorrect);
-  add("재시도후정답률", scored ? Math.round(finalCorrect/scored*10000)/100 : "");
-  add("목표기준", CONFIG.PASS_THRESHOLD);
-  add("목표도달", firstCorrect >= CONFIG.PASS_THRESHOLD ? 1 : 0);
-  add("체류초_정보", pageSec(["info"]));
-  add("체류초_응답안내", pageSec(["guide-scale"]));
-  add("체류초_시작안내", pageSec(["guide-start"]));
-  add("체류초_읽기", pageSec(["exp-read","ctrl-read"]));
-  add("체류초_전문가", pageSec(["exp-expert","ctrl-expert"]));
-  add("체류초_이야기", pageSec(["exp-stories","ctrl-stories"]));
-  add("체류초_요약", pageSec(["exp-summary","ctrl-summary"]));
-  add("체류초_한문장", pageSec(["exp-sentence","ctrl-sentence"]));
-  add("체류초_조작점검", pageSec(["check"]));
-  add("체류초_목표", pageSec(["goal"]));
-  add("체류초_피드백", pageSec(["feedback"]));
-  add("체류초_귀인작성", pageSec(["attribution"]));
-  add("체류초_이유", pageSec(["reason"]));
-  add("체류초_사후1", pageSec(["post1"]));
-  add("체류초_사후2", pageSec(["post2"]));
-  add("체류초_사후3", pageSec(["post3"]));
-  add("체류초_마무리", pageSec(["closing"]));
-  add("체류초_글합계", pageSec(["exp-read","ctrl-read","exp-expert","ctrl-expert","exp-stories","ctrl-stories","exp-summary","ctrl-summary","exp-sentence","ctrl-sentence","check"]));
-  add("전체소요초", state.startedAt ? secOf(Date.now()-state.startedAt) : "");
-  return cols;
-}
-
-function scaleList(items){
-  return items.map(it=>state.scales[it.id] ?? "").join("/");
-}
-function problemRecord(tag, record){
-  return {
-    응답: record[tag+"_응답"],
-    선택: record[tag+"_선택"],
-    정오: record[tag+"_정오"],
-    풀이초: record[tag+"_풀이초"],
-    재시도횟수: record[tag+"_재시도횟수"],
-    재시도응답: record[tag+"_재시도응답"],
-    재시도정오: record[tag+"_재시도정오"]
-  };
-}
+/* 한 셀에 한 값으로 펼치는 작업은 Code.gs에서 검증·채점 후 수행합니다.
+   전송 중첩 객체는 통신 형식이며 Google Sheets 셀에 JSON으로 저장하지 않습니다. */
 function buildPayload(){
-  const cols = buildColumns();
-  const record = {};
-  cols.forEach(([name, value])=>{ record[name] = value; });
-  const info = state.studentInfo;
-  const mc = {};
-  const short = {};
-  PROBLEMS.forEach(p=>{
-    const tag = "문제"+String(p.no).padStart(2,"0");
-    const item = problemRecord(tag, record);
-    if(p.kind==="mc") mc[tag] = item;
-    else short[tag] = item;
-  });
-  const dwell = {};
-  cols.forEach(([name, value])=>{
-    if(name.indexOf("체류초_")===0 || name==="전체소요초") dwell[name] = value;
+  freezeInitialAnswers();
+  const info=state.studentInfo;
+  const scales={};
+  [...CHECK_ITEMS,...REASON_ITEMS,...ADAPT_ITEMS,...BEHAVE_ITEMS].forEach(it=>{
+    scales[it.id]=Number.isFinite(state.scales[it.id]) ? state.scales[it.id] : null;
   });
   return {
-    submittedAt: record["제출시각"],
-    studentInfo: {
-      school: info.school.trim(),
-      grade: info.grade.trim(),
-      classroom: info.classroom.trim(),
-      name: info.name.trim(),
-      number: info.number.trim(),
-      gender: info.gender || ""
-    },
-    selfVerbal: state.sentence.trim(),
-    mcAnswers: mc,
-    shortAnswers: {
-      요약: state.summary.trim(),
-      주관식: short,
-      성별: info.gender || "",
-      성별코드: record["성별코드"],
-      번호: info.number.trim(),
-      집단: record["집단"],
-      집단명: record["집단명"],
-      화면노출: record["화면노출"],
-      입력코드: record["입력코드"],
-      응답예시: record["응답예시"],
-      설문: {
-        조작점검: CHECK_ITEMS.map(it=>state.scales[it.id] ?? ""),
-        이유: REASON_ITEMS.map(it=>state.scales[it.id] ?? ""),
-        사후적응: ADAPT_ITEMS.map(it=>state.scales[it.id] ?? ""),
-        사후행동: BEHAVE_ITEMS.map(it=>state.scales[it.id] ?? "")
-      },
-      체류: dwell,
-      다시풀기실시: record["다시풀기실시"],
-      재시도정답수: record["재시도정답수"],
-      목표도달: record["목표도달"],
-      전체: record
-    },
-    totalCorrect: record["최초정답수"]==="" ? 0 : record["최초정답수"],
-    totalItems: PROBLEMS.length,
-    attributionOpen: state.attribution.trim(),
-    cdsii: [
-      "조작점검:"+scaleList(CHECK_ITEMS),
-      "이유:"+scaleList(REASON_ITEMS),
-      "사후적응:"+scaleList(ADAPT_ITEMS),
-      "사후행동:"+scaleList(BEHAVE_ITEMS),
-      "응답예시:"+(state.scales.example ?? ""),
-      "성별:"+(info.gender || ""),
-      "번호:"+info.number.trim(),
-      "집단:"+(record["집단명"] || ""),
-      "코드:"+(record["입력코드"] || ""),
-      "화면:"+(record["화면노출"] || ""),
-      "다시풀기:"+record["다시풀기실시"],
-      "목표도달:"+record["목표도달"]
-    ],
-    reviewedWrongAnswers: !!state.didRetry,
-    headers: cols.map(col=>col[0]),
-    values: cols.map(col=>col[1])
+    schema_version:"1.0.0", submission_id:submissionId, receipt_token:receiptToken,
+    client_started_at:new Date(state.startedAt).toISOString(),
+    client_submitted_at:new Date().toISOString(),group:state.group,expose:state.expose,
+    entry_code:state.entryCode,
+    student:{school:info.school,grade:info.grade,classroom:info.classroom,
+      number:info.number,name:info.name,gender:info.gender},
+    summary:state.summary,sentence:state.sentence,attribution:state.attribution,
+    example:state.scales.example ?? null,scales,
+    initial_answers:JSON.parse(JSON.stringify(state.initialAnswers)),
+    retry_choice:state.retryChoice,review_entered:state.reviewEntered,
+    attempts:JSON.parse(JSON.stringify(allAttempts)),
+    screen_visits:JSON.parse(JSON.stringify(screenVisits)),
+    duration_total_ms:Math.max(0,Date.now()-state.startedAt),
+    settings:{dwell_ms:CONFIG.DWELL_MS,pass_threshold:CONFIG.PASS_THRESHOLD}
   };
 }
 
+function renderSaveProgress(){
+  stageEl.classList.add("is-end");
+  renderChrome(PAGES.length,PAGES.length,state.sending?"저장 중":"저장 확인");
+  appEl.innerHTML=screen("screen-message",`<p class="goal-banner">${state.sending
+    ? "응답을 저장하고 있습니다.<br>잠시 기다려 주세요."
+    : "응답 저장을 확인하지 못했습니다.<br>이 화면을 닫지 말고 다시 시도해 주세요."}</p>`);
+  navEl.innerHTML=state.sending ? "" : `<div class="navbar-inner"><div class="spacer"></div><button type="button" class="primary" id="retrySave">다시 저장하기</button></div>`;
+  if(!state.sending) document.getElementById("retrySave").onclick=()=>sendPendingPayload();
+}
+function pauseFor(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function isValidEndpoint(url){
+  try{const u=new URL(url);return u.protocol==="https:" && u.hostname==="script.google.com"
+    && /^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(u.pathname) && !u.search && !u.hash;}
+  catch(e){return false;}
+}
+function requestReceipt(endpoint,payload,timeoutMs=4500){
+  return new Promise((resolve,reject)=>{
+    const callback="researchReceipt_"+makeUuid().replace(/-/g,"");
+    const script=document.createElement("script");
+    let timer;
+    const cleanup=()=>{clearTimeout(timer);delete window[callback];script.remove();};
+    window[callback]=(result)=>{cleanup();resolve(result);};
+    script.onerror=()=>{cleanup();reject(new Error("RECEIPT_UNAVAILABLE"));};
+    const params=new URLSearchParams({action:"status",submission_id:payload.submission_id,
+      token:payload.receipt_token,callback});
+    script.src=endpoint+"?"+params.toString();
+    timer=setTimeout(()=>{cleanup();reject(new Error("RECEIPT_TIMEOUT"));},timeoutMs);
+    document.head.appendChild(script);
+  });
+}
+function isCompleteReceipt(receipt,payload){
+  return receipt && receipt.ok===true && receipt.status==="complete"
+    && receipt.submission_id===payload.submission_id;
+}
+async function saveToSheets(payload){
+  if(globalThis.google && google.script && google.script.run){
+    return await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error("SAVE_TIMEOUT")),45000);
+      google.script.run.withSuccessHandler(result=>{clearTimeout(timer);resolve(result);})
+        .withFailureHandler(error=>{clearTimeout(timer);reject(error);}).saveSubmission(payload);
+    });
+  }
+  const endpoint=String(CONFIG.GAS_ENDPOINT || "").trim();
+  if(!isValidEndpoint(endpoint)) throw new Error("연구자가 새 수집 웹 앱 주소를 설정해야 합니다.");
+  // no-cors의 opaque 응답은 저장 성공이 아닙니다. 아래 독립 영수증을 확인합니다.
+  const controller=new AbortController();
+  const postTimer=setTimeout(()=>controller.abort(),12000);
+  try{
+    await fetch(endpoint,{method:"POST",mode:"no-cors",redirect:"follow",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(payload),signal:controller.signal});
+  }catch(error){
+    // POST 응답이 끊겨도 서버가 저장했을 수 있으므로 동일 ID 영수증부터 확인합니다.
+  }finally{clearTimeout(postTimer);}
+  const deadline=Date.now()+30000;
+  for(let attempt=0;Date.now()<deadline;attempt++){
+    await pauseFor(Math.min(1000+attempt*500,3000));
+    let receipt;
+    try{receipt=await requestReceipt(endpoint,payload,Math.min(4500,Math.max(1,deadline-Date.now())));}
+    catch(error){continue;}
+    if(isCompleteReceipt(receipt,payload)) return receipt;
+    if(receipt && receipt.status==="error") throw new Error("SERVER_SAVE_ERROR");
+  }
+  throw new Error("SAVE_NOT_CONFIRMED");
+}
+async function sendPendingPayload(){
+  if(state.sending || state.submitted || !pendingPayload) return;
+  state.sending=true;state.submitError="";render();
+  try{
+    const receipt=await saveToSheets(pendingPayload);
+    if(!isCompleteReceipt(receipt,pendingPayload)) throw new Error("INVALID_RECEIPT");
+    state.submitted=true;state.sending=false;render();
+  }catch(error){
+    state.sending=false;state.submitError="SAVE_NOT_CONFIRMED";
+    console.error("응답 저장 미확인:",error && error.message ? error.message : "SAVE_FAILED");
+    render();
+  }
+}
 function finishActivity(){
-  if(state.submitted) return;
-  if(!retryMode) commitPageTime();
-  retryMode = false;
-  closeModal();
-  const payload = buildPayload();
-  state.submitted = true;
-  render();
-  if(!CONFIG.GAS_ENDPOINT) return;
-  fetch(CONFIG.GAS_ENDPOINT, {
-    method:"POST",
-    mode:"no-cors",
-    headers:{ "Content-Type":"text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  }).then(()=>console.log("Google Sheets 전송 요청 완료"))
-    .catch(err=>console.error("Google Sheets 전송 실패:", err));
+  if(state.submitted || state.sending) return;
+  if(!pendingPayload){
+    if(!retryMode) commitPageTime();
+    closeVisit();retryMode=false;closeModal();
+    // 재전송은 같은 ID와 같은 내용을 유지하며 중복 행을 만들지 않습니다.
+    pendingPayload=buildPayload();
+  }
+  return sendPendingPayload();
 }
 
 window.addEventListener("beforeunload", (e)=>{
