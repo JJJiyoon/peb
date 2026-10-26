@@ -165,6 +165,7 @@
     cursor:pointer;
     transition:background .15s, border-color .15s, transform .12s;
   }
+  button[hidden]{display:none;}
   .stage-foot button.ghost{
     color:var(--chalk);
     border-color:rgba(247,243,232,.45);
@@ -1453,7 +1454,7 @@ function formatClock(ms){
   return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 }
 function dwellLeft(page){
-  if(!page?.dwell) return 0;
+  if(!page?.dwell || page.type==="sentence") return 0;
   const saved = state.dwellMs[page.id] || 0;
   const live = Date.now() - pageEnteredAt;
   return Math.max(0, CONFIG.DWELL_MS - saved - live);
@@ -1805,7 +1806,7 @@ function renderAttribution(){
     </header>
     <section class="panel write-panel is-compact">
       <p class="lead">이번 수학 과제에서 이러한 결과가 나온 이유는 무엇이라고 생각하나요? 자신의 말로 자유롭게 적어 주세요. 여러가지 이유가 떠오른다면 가장 중요하다고 생각하는 이유 한 가지만 적어주세요. 그리고 마음속으로 작성한 이유 중 가장 중요한 이유 한 가지만 떠올려 주세요.</p>
-      <textarea id="f_attribution" placeholder="가장 중요한 이유 한 가지를 적어 주세요.">${escapeHtml(state.attribution)}</textarea>
+      <textarea id="f_attribution" placeholder="예를 들어, 능력이나 노력, 평소 공부 방법 등과 관련된 이유일 수 있습니다.">${escapeHtml(state.attribution)}</textarea>
     </section>`);
 }
 
@@ -2158,6 +2159,7 @@ function updateNavValidity(){
   const hint = document.getElementById("navHint");
   if(!nextBtn) return;
   const ok = isCurrentPageValid();
+  nextBtn.hidden = PAGES[currentPage]?.type==="sentence" && !ok;
   nextBtn.classList.toggle("is-waiting", !ok);
   nextBtn.setAttribute("aria-disabled", ok ? "false" : "true");
   if(hint) hint.textContent = (showHint && !ok) ? "계속하려면 모든 항목에 응답해 주세요." : "";
