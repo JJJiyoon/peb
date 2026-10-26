@@ -972,6 +972,9 @@
 const CONFIG = {
   GAS_ENDPOINT: "https://script.google.com/macros/s/AKfycbxMEfiJPTld3PLIUhqig5uEa9vybNNxV3KR-bHkFYnSOCZqPsFOVEgxInROHj-n9xs9hw/exec", // 2026-10-26 제공받은 연구 자료 수집 웹 앱 주소
   PASS_THRESHOLD: 10,
+  MATH_LIMIT_MS: 20 * 60 * 1000,
+  REVIEW_LIMIT_MS: 4 * 60 * 1000,
+  WAIT_LIMIT_MS: 4 * 60 * 1000,
   DWELL_MS: 2 * 60 * 1000,
   DWELL_DEFAULT_SEC: 120,
   DWELL_MAX_SEC: 600,
@@ -1117,6 +1120,89 @@ const allAttempts = [];
 let pendingPayload = null;
 let submissionId = null;
 let receiptToken = null;
+let waitMode = false;
+let phaseTicker = null;
+const phaseClocks = {
+  initial:{start:null,end:null,limit:CONFIG.MATH_LIMIT_MS,timedOut:false},
+  review:{start:null,end:null,limit:CONFIG.REVIEW_LIMIT_MS,timedOut:false},
+  wait:{start:null,end:null,limit:CONFIG.WAIT_LIMIT_MS,timedOut:false}
+};
+let waitRequired = false;
+let waitCompleted = false;
+
+// 마감시각을 기준으로 제한합니다. 탭을 숨겨도 시간이 흐르며 학생에게는 표시하지 않습니다.
+function startPhase(name){
+  const clock=phaseClocks[name];
+  if(clock.start!==null) return;
+  clock.start=Date.now();
+  if(phaseTicker===null) phaseTicker=setInterval(checkPhaseDeadlines,250);
+}
+function stopPhase(name,at=Date.now(),timedOut=false){
+  const clock=phaseClocks[name];
+  if(clock.start===null || clock.end!==null) return;
+  clock.end=Math.max(clock.start,Math.min(at,clock.start+clock.limit));
+  clock.timedOut=timedOut;
+  if(!Object.values(phaseClocks).some(c=>c.start!==null && c.end===null)){
+    clearInterval(phaseTicker);phaseTicker=null;
+  }
+}
+function phaseElapsed(name){
+  const c=phaseClocks[name];
+  return c.start===null?0:Math.max(0,Math.min(c.limit,(c.end??Date.now())-c.start));
+}
+function finishInitialPhase(timedOut=false,at=Date.now()){
+  stopPhase("initial",at,timedOut);
+  commitPageTime(at);
+  closeVisit(at);
+  freezeInitialAnswers();
+  currentPage=PAGES.findIndex(p=>p.id==="feedback");
+  pageEnteredAt=Date.now();
+  showHint=false;
+  closeModal();
+}
+function checkPhaseDeadlines(){
+  if(state.submitted || state.sending || pendingPayload) return false;
+  const now=Date.now();
+  const initial=phaseClocks.initial;
+  if(initial.start!==null && initial.end===null && now>=initial.start+initial.limit){
+    finishInitialPhase(true,initial.start+initial.limit);render();return true;
+  }
+  const review=phaseClocks.review;
+  if(review.start!==null && review.end===null && now>=review.start+review.limit){
+    const cutoff=review.start+review.limit;
+    stopPhase("review",cutoff,true);
+    // 확인을 누르지 않은 검토 초안은 확정 제출 횟수와 최종점수에 넣지 않습니다.
+    continueAfterRetry(cutoff);return true;
+  }
+  const wait=phaseClocks.wait;
+  if(wait.start!==null && wait.end===null && now>=wait.start+wait.limit){
+    const cutoff=wait.start+wait.limit;
+    stopPhase("wait",cutoff);
+    waitCompleted=true;waitMode=false;
+    continueAfterRetry(cutoff);return true;
+  }
+  return false;
+}
+function startWaiting(){
+  if(waitCompleted) {continueAfterRetry();return;}
+  waitRequired=true;waitMode=true;
+  startPhase("wait");
+  render();
+}
+function renderWaiting(){
+  if(!enterVisit({id:"retry-wait",type:"wait"})) return;
+  stageEl.dataset.screen="wait";
+  renderChrome(currentPage+1,PAGES.length,"잠시 기다려 주세요");
+  appEl.innerHTML=screen("screen-message",'<p class="goal-banner">잠시 기다려 주세요.<br>다음 화면으로 자동 이동합니다.</p>');
+  navEl.innerHTML="";
+}
+// 백그라운드에서 지연된 타이머가 재개되는 순간에도 마감 뒤 응답이 들어가지 않게 합니다.
+["click","input","keydown"].forEach(type=>document.addEventListener(type,event=>{
+  if(checkPhaseDeadlines()){
+    event.preventDefault();event.stopImmediatePropagation();
+  }
+},true));
+["focus","pageshow"].forEach(type=>window.addEventListener(type,checkPhaseDeadlines));
 
 function makeUuid(){
   if(globalThis.crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -1144,9 +1230,13 @@ function updateVisibleTime(now){
   if(activeVisit.visibleSince != null) activeVisit.visible_ms += Math.max(0,now-activeVisit.visibleSince);
   activeVisit.visibleSince = document.visibilityState === "hidden" ? null : now;
 }
-function closeVisit(){
+function closeVisit(now=Date.now()){
   if(!activeVisit) return;
-  const now = Date.now();
+  const phaseName=activeVisit.phase==="initial"?"initial":activeVisit.phase==="review"?"review":activeVisit.screen_id==="retry-wait"?"wait":null;
+  const clock=phaseName?phaseClocks[phaseName]:null;
+  if(clock && clock.start!==null) now=Math.min(now,clock.end??(clock.start+clock.limit));
+  // 지연된 렌더와 마감이 같은 순간 겹쳐도 역전된 시각을 저장하지 않습니다.
+  now=Math.max(activeVisit.enteredMs,now);
   updateVisibleTime(now);
   const duration = Math.max(0,now-activeVisit.enteredMs);
   screenVisits.push({
@@ -1159,18 +1249,22 @@ function closeVisit(){
   activeVisit = null;
 }
 function enterVisit(page,isReview=false){
-  const identity = isReview ? "retry-"+page.data.id : page.id;
-  if(activeVisit && activeVisit.screen_id===identity) return;
-  closeVisit();
   const now=Date.now();
+  if(checkPhaseDeadlines()) return false;
+  const identity = isReview ? "retry-"+page.data.id : page.id;
+  if(activeVisit && activeVisit.screen_id===identity) return true;
+  closeVisit(now);
   const phase=isReview ? "review" : page.type==="problem" ? "initial"
     : ["reason","post1","post2","post3","attribution"].includes(page.id) ? "survey"
     : page.dwell || page.id==="check" ? "lesson" : "other";
   activeVisit={screen_id:identity,screen_type:isReview?"retry":page.type,
     problem_id:page.data ? page.data.id : null,phase,enteredMs:now,
     visible_ms:0,visibleSince:document.visibilityState==="hidden"?null:now};
+  return true;
 }
-document.addEventListener("visibilitychange",()=>updateVisibleTime(Date.now()));
+document.addEventListener("visibilitychange",()=>{
+  if(!checkPhaseDeadlines()) updateVisibleTime(Date.now());
+});
 
 const stageEl = document.getElementById("stage");
 const headEl = document.getElementById("stageHead");
@@ -1392,17 +1486,25 @@ function figureHtml(file){
 function closeModal(){ modalRoot.innerHTML = ""; }
 
 function render(){
+  if(checkPhaseDeadlines()) return;
   clearInterval(dwellTimer);
   closeModal();
   stageEl.classList.remove("is-end");
   if(!state.group){ closeVisit(); renderCode(); return; }
+  if(waitMode){ renderWaiting(); return; }
   if(retryMode){ renderRetry(); return; }
   if(state.submitted){ closeVisit(); renderSubmitScreen(); return; }
   if(state.sending || pendingPayload){ closeVisit(); renderSaveProgress(); return; }
   if(state.thanks){ renderThanks(); return; }
   const page = PAGES[currentPage];
-  if(page.id==="feedback") freezeInitialAnswers();
-  enterVisit(page);
+  if(page.type==="problem" && !state.initialAnswers) startPhase("initial");
+  if(page.id==="feedback"){
+    const endedAt=Date.now();
+    stopPhase("initial",endedAt);
+    closeVisit(phaseClocks.initial.end??endedAt);
+    freezeInitialAnswers();
+  }
+  if(!enterVisit(page)) return;
   stageEl.dataset.screen = page.type;
   renderChrome(currentPage+1, PAGES.length, page.label);
   let html = memoHtml(page);
@@ -1774,7 +1876,8 @@ function renderSubmitScreen(){
 function renderRetry(){
   const item = retryList[retryIndex];
   state.reviewEntered = true;
-  enterVisit({id:"retry-"+item.id,type:"retry",data:item},true);
+  startPhase("review");
+  if(!enterVisit({id:"retry-"+item.id,type:"retry",data:item},true)) return;
   if(retryStampIndex !== retryIndex){
     retryStampIndex = retryIndex;
     retryEnteredAt = Date.now();
@@ -1795,6 +1898,7 @@ function renderRetry(){
     </div>`;
   document.querySelectorAll(".opt").forEach(opt=>{
     opt.onclick = ()=>{
+      if(checkPhaseDeadlines() || !retryMode) return;
       retryDraft[item.id] = null;
       state._retryPick = state._retryPick || {};
       state._retryPick[item.id] = parseInt(opt.dataset.idx, 10);
@@ -1804,10 +1908,10 @@ function renderRetry(){
   const input = document.getElementById("f_answer");
   if(input){
     input.maxLength = 2000;
-    input.oninput = ()=>{ retryDraft[item.id] = input.value; };
+    input.oninput = ()=>{ if(checkPhaseDeadlines() || !retryMode) return; retryDraft[item.id] = input.value; };
   }
   document.getElementById("navPrev").onclick = ()=>{
-    if(retryIndex===0) return;
+    if(checkPhaseDeadlines() || !retryMode || retryIndex===0) return;
     retryIndex--;
     render();
   };
@@ -1820,6 +1924,7 @@ function currentRetryAnswer(item){
 }
 
 function checkRetry(item){
+  if(checkPhaseDeadlines() || !retryMode) return;
   const picked = item.kind==="mc" ? (state._retryPick && state._retryPick[item.id]) : null;
   const value = item.kind==="short" ? (retryDraft[item.id]||"") : "";
   const has = item.kind==="mc" ? picked!=null && !Number.isNaN(picked) : String(value).trim().length>0;
@@ -1872,17 +1977,22 @@ function openModal(correct, problemId){
     document.getElementById("btnModalNext").onclick = ()=>advanceRetry();
   } else {
     document.getElementById("btnModalBack").onclick = ()=>{
+      if(checkPhaseDeadlines() || !retryMode) return;
       state.retryLog[problemId].back = 1;
       closeModal();
     };
     document.getElementById("btnModalSkip").onclick = ()=>{
+      if(checkPhaseDeadlines() || !retryMode) return;
       state.retryLog[problemId].skip = 1;
       advanceRetry();
     };
   }
 }
 
-function continueAfterRetry(){
+function continueAfterRetry(at=Date.now()){
+  if(waitMode && !waitCompleted) return;
+  stopPhase("review",at);
+  closeVisit(at);
   closeModal();
   retryMode = false;
   const idx = PAGES.findIndex(p=>p.id==="feedback");
@@ -1895,6 +2005,7 @@ function continueAfterRetry(){
   render();
 }
 function advanceRetry(){
+  if(checkPhaseDeadlines() || !retryMode) return;
   closeModal();
   if(retryIndex < retryList.length-1){
     retryIndex++;
@@ -1909,7 +2020,7 @@ function openRetryChoice(){
     <div class="modal-back">
       <div class="modal" role="dialog" aria-modal="true">
         <p class="msg">문제를 다시 풀어 볼까요?</p>
-        <p class="modal-lead">틀린 문제를 다시 풀 수 있습니다. 풀지 않으면 다음 질문으로 이동합니다.</p>
+        <p class="modal-lead">틀린 문제를 다시 풀 수 있습니다. 풀지 않으면 잠시 기다린 뒤 다음 질문으로 이동합니다.</p>
         <div class="modal-actions">
           <button type="button" class="ghost" id="btnNoRetry">안 풀겠습니다</button>
           <button type="button" class="primary" id="btnYesRetry">다시 풀겠습니다</button>
@@ -1927,13 +2038,14 @@ function openRetryChoice(){
     state.retryAsked = true;
     state.retryChoice = "no";
     if(!retryMode) commitPageTime();
-    continueAfterRetry();
+    startWaiting();
   };
 }
 
 function startRetry(){
+  if(phaseClocks.review.end!==null) return;
   state.didRetry = true;
-  retryList = PROBLEMS.filter(p=>grade(p, initialMath()[p.id])===false);
+  retryList = PROBLEMS.filter(p=>grade(p, initialMath()[p.id])!==true);
   if(!retryList.length){
     modalRoot.innerHTML = `
       <div class="modal-back"><div class="modal" role="dialog" aria-modal="true">
@@ -1995,6 +2107,7 @@ function attachPageEvents(page){
     const item = page.data;
     document.querySelectorAll(".opt").forEach(opt=>{
       opt.onclick = ()=>{
+        if(checkPhaseDeadlines() || state.initialAnswers) return;
         const idx = parseInt(opt.dataset.idx, 10);
         const prev = state.math[item.id] || {};
         state.math[item.id] = { ...prev, selected: idx, isCorrect: item.answerIndex==null ? null : idx===item.answerIndex };
@@ -2006,6 +2119,7 @@ function attachPageEvents(page){
     if(input){
       input.maxLength = 2000;
       input.oninput = ()=>{
+        if(checkPhaseDeadlines() || state.initialAnswers) return;
         const prev = state.math[item.id] || {};
         const value = input.value;
         state.math[item.id] = { ...prev, value, isCorrect: grade(item, { value }) };
@@ -2052,7 +2166,8 @@ function updateNavValidity(){
 function renderNav(page){
   clearInterval(dwellTimer);
   // 첫 결과를 본 뒤 최초 풀이로 되돌아가 답을 바꾸지 않도록 경계를 잠급니다.
-  const hidePrev = (currentPage===0 && state.groupLocked) || page.id==="feedback";
+  const hidePrev = (currentPage===0 && state.groupLocked) || page.id==="feedback"
+    || page.id==="q1" || (page.id==="attribution" && state.retryAsked);
   const locked = page.dwell && dwellLeft(page)>0;
   const isLast = currentPage === PAGES.length - 1;
   navEl.innerHTML = `
@@ -2078,6 +2193,7 @@ function renderNav(page){
   }
   if(!locked){
     document.getElementById("navNext").onclick = ()=>{
+      if(checkPhaseDeadlines()) return;
       if(!isCurrentPageValid()){
         showHint = true;
         updateNavValidity();
@@ -2109,10 +2225,10 @@ function renderNav(page){
   }
 }
 
-function commitPageTime(){
+function commitPageTime(now=Date.now()){
   const page = PAGES[currentPage];
   if(!page) return;
-  const elapsed = Date.now()-pageEnteredAt;
+  const elapsed = Math.max(0,now-pageEnteredAt);
   state.pageMs[page.id] = (state.pageMs[page.id]||0) + elapsed;
   if(page.dwell) state.dwellMs[page.id] = (state.dwellMs[page.id]||0) + elapsed;
   if(page.type==="problem"){
@@ -2132,7 +2248,7 @@ function buildPayload(){
     scales[it.id]=Number.isFinite(state.scales[it.id]) ? state.scales[it.id] : null;
   });
   return {
-    schema_version:"1.0.0", submission_id:submissionId, receipt_token:receiptToken,
+    schema_version:"1.1.0", submission_id:submissionId, receipt_token:receiptToken,
     client_started_at:new Date(state.startedAt).toISOString(),
     client_submitted_at:new Date().toISOString(),group:state.group,expose:state.expose,
     entry_code:state.entryCode,
@@ -2145,6 +2261,11 @@ function buildPayload(){
     attempts:JSON.parse(JSON.stringify(allAttempts)),
     screen_visits:JSON.parse(JSON.stringify(screenVisits)),
     duration_total_ms:Math.max(0,Date.now()-state.startedAt),
+    timing:{math_limit_ms:CONFIG.MATH_LIMIT_MS,review_limit_ms:CONFIG.REVIEW_LIMIT_MS,
+      wait_limit_ms:CONFIG.WAIT_LIMIT_MS,initial_elapsed_ms:phaseElapsed("initial"),
+      review_elapsed_ms:phaseElapsed("review"),wait_elapsed_ms:phaseElapsed("wait"),
+      initial_timed_out:phaseClocks.initial.timedOut,review_timed_out:phaseClocks.review.timedOut,
+      wait_required:waitRequired,wait_completed:waitCompleted},
     settings:{dwell_ms:CONFIG.DWELL_MS,pass_threshold:CONFIG.PASS_THRESHOLD}
   };
 }
