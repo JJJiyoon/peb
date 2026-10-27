@@ -1,111 +1,94 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>관리자</title>
-<style>
-  body{font-family:sans-serif; max-width:440px; margin:36px auto; padding:0 16px;}
-  h1{font-size:22px; margin:0 0 16px;}
-  label{display:block; margin:12px 0 4px; font-size:14px;}
-  input{width:100%; box-sizing:border-box; padding:8px; font-size:16px;}
-  button{margin-top:14px; margin-right:8px; padding:8px 14px; font-size:15px; cursor:pointer;}
-  .msg{min-height:1.2em; font-size:14px;}
-  .err{color:#b00000;}
-  a{font-size:14px;}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>관리자</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:#202124;font:17px/1.6 system-ui,-apple-system,"Malgun Gothic",sans-serif}
+    main{max-width:650px;margin:44px auto;padding:0 24px 48px}
+    h1{font-size:28px;margin:0 0 14px} h2{font-size:21px;margin:32px 0 8px}
+    p{margin:8px 0 18px} label{display:block;margin-top:18px}
+    input{width:100%;font:inherit;padding:10px 12px;border:1px solid #90969d;border-radius:4px}
+    input[readonly]{background:#f3f5f6;font-variant-numeric:tabular-nums;cursor:default}
+    .help{font-size:15px;color:#515961;margin:8px 0 16px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+    button{font:inherit;padding:9px 14px;border:1px solid #90969d;border-radius:4px;background:#f3f5f6;cursor:pointer}
+    button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #207543;outline-offset:3px}
+    #saveDwell{background:#216c41;color:white;border-color:#216c41}
+    .error{color:#a61e1e} [hidden]{display:none!important}
+    #status{min-height:28px;margin:16px 0} a{color:#185c39}
+  </style>
 </head>
 <body>
-<div id="app"></div>
-<script>
-const DWELL_KEY = "activityDwellSec";
-const CODE_KEY = "activityCodes";
-const AUTH_KEY = "adminOk";
-const DEFAULTS = { exp:"8142", ctrl:"3657", dwell:120, min:1, max:600 };
-
-function readSettings(){
-  let dwell = DEFAULTS.dwell;
-  let exp = DEFAULTS.exp;
-  let ctrl = DEFAULTS.ctrl;
-  try{
-    const d = localStorage.getItem(DWELL_KEY);
-    if(d != null && d !== "" && Number.isInteger(Number(d)) && Number(d) >= DEFAULTS.min) dwell = Number(d);
-    const raw = localStorage.getItem(CODE_KEY);
-    if(raw){
-      const data = JSON.parse(raw);
-      if(data.exp && data.ctrl){ exp = String(data.exp); ctrl = String(data.ctrl); }
-    }
-  }catch(e){}
-  return { dwell, exp, ctrl };
-}
-
-function renderLogin(message){
-  document.getElementById("app").innerHTML = `
-    <h1>관리자 로그인</h1>
-    <form id="loginForm">
-      <label for="user">아이디</label>
-      <input id="user" name="user" autocomplete="username">
-      <label for="pass">비밀번호</label>
-      <input id="pass" name="pass" type="password" autocomplete="current-password">
-      <p class="msg err">${message || ""}</p>
-      <button type="submit">로그인</button>
-    </form>`;
-  document.getElementById("loginForm").onsubmit = (e)=>{
-    e.preventDefault();
-    const id = document.getElementById("user").value.trim();
-    const pw = document.getElementById("pass").value;
-    if(id === "admin" && pw === "admin"){
-      sessionStorage.setItem(AUTH_KEY, "1");
-      renderSettings("");
-      return;
-    }
-    renderLogin("아이디 또는 비밀번호가 맞지 않습니다.");
-  };
-}
-
-function renderSettings(message, isError){
-  const s = readSettings();
-  document.getElementById("app").innerHTML = `
+  <main>
     <h1>관리자</h1>
-    <p>이 브라우저에 저장됩니다. 학생 화면을 새로고침하면 반영됩니다.</p>
-    <form id="setForm" novalidate>
-      <label for="dwell">글 화면에 머무는 시간 (초)</label>
-      <input id="dwell" type="number" min="${DEFAULTS.min}" max="${DEFAULTS.max}" step="1" value="${s.dwell}">
-      <p>최소 1초 이상이어야 합니다. 0초는 저장할 수 없습니다.</p>
-      <label for="exp">실험집단 코드</label>
-      <input id="exp" value="${s.exp.replace(/"/g, "&quot;")}">
-      <label for="ctrl">통제집단 코드</label>
-      <input id="ctrl" value="${s.ctrl.replace(/"/g, "&quot;")}">
-      <p class="msg ${isError ? "err" : ""}">${message || ""}</p>
-      <button type="submit">저장</button>
-      <button type="button" id="resetDwell">${DEFAULTS.dwell}초로 되돌리기</button>
-    </form>
-    <p><a href="../index.html">활동 화면으로</a></p>`;
-  document.getElementById("setForm").onsubmit = (e)=>{
-    e.preventDefault();
-    const dwell = Number(document.getElementById("dwell").value);
-    const exp = document.getElementById("exp").value.trim();
-    const ctrl = document.getElementById("ctrl").value.trim();
-    if(document.getElementById("dwell").value.trim() === "" || !Number.isInteger(dwell) || dwell < DEFAULTS.min || dwell > DEFAULTS.max){
-      renderSettings(`대기 시간은 최소 1초 이상이어야 합니다. 1부터 ${DEFAULTS.max}까지의 정수만 저장할 수 있습니다.`, true);
-      return;
-    }
-    if(!exp || !ctrl || exp === ctrl){
-      renderSettings("두 집단 코드는 서로 다르게, 비우지 않고 입력해 주세요.", true);
-      return;
-    }
-    localStorage.setItem(DWELL_KEY, String(dwell));
-    localStorage.setItem(CODE_KEY, JSON.stringify({ exp, ctrl }));
-    renderSettings("저장했습니다.");
-  };
-  document.getElementById("resetDwell").onclick = ()=>{
-    localStorage.setItem(DWELL_KEY, String(DEFAULTS.dwell));
-    renderSettings(`${DEFAULTS.dwell}초로 되돌렸습니다.`);
-  };
-}
-
-if(sessionStorage.getItem(AUTH_KEY) === "1") renderSettings("");
-else renderLogin("");
-</script>
+    <p>집단 코드는 모든 기기와 브라우저에서 동일하게 적용됩니다.</p>
+    <p id="configError" class="error" role="alert" hidden>활동 설정을 불러오지 못했습니다. 페이지를 새로고침해 주세요.</p>
+    <h2>공통 집단 코드</h2>
+    <label for="expCode">실험집단 코드</label>
+    <input id="expCode" type="text" readonly autocomplete="off" aria-describedby="codeHelp">
+    <label for="ctrlCode">통제집단 코드</label>
+    <input id="ctrlCode" type="text" readonly autocomplete="off" aria-describedby="codeHelp">
+    <p id="codeHelp" class="help">고정된 코드입니다. 이 화면을 다시 열거나 아래 읽기 시간을 저장해도 바뀌지 않습니다.</p>
+    <h2>현재 브라우저의 읽기 시간</h2>
+    <p class="help">읽기 시간 설정은 현재 브라우저에만 저장됩니다. 학생 활동을 시작하기 전에 활동 화면을 새로고침하면 반영됩니다.</p>
+    <label for="dwellSec">글 화면에 머무는 시간 (초)</label>
+    <input id="dwellSec" type="number" min="1" max="600" step="1" value="120" inputmode="numeric" aria-describedby="dwellHelp">
+    <p id="dwellHelp" class="help">1초부터 600초까지 설정할 수 있습니다.</p>
+    <div class="actions">
+      <button id="saveDwell" type="button">읽기 시간 저장</button>
+      <button id="resetDwell" type="button">120초로 되돌리기</button>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <a href="../">활동 화면으로</a>
+  </main>
+  <script src="../research-config.js?v=20261027-codes1"></script>
+  <script>
+    (()=>{
+      "use strict";
+      const settings=globalThis.RESEARCH_CONFIG;
+      const codes=settings&&settings.groupCodes;
+      const valid=settings&&settings.schemaVersion===1&&codes
+        &&typeof codes.exp==="string"&&/^\d{1,100}$/.test(codes.exp)
+        &&typeof codes.ctrl==="string"&&/^\d{1,100}$/.test(codes.ctrl)
+        &&codes.exp!==codes.ctrl;
+      if(valid){
+        document.getElementById("expCode").value=codes.exp;
+        document.getElementById("ctrlCode").value=codes.ctrl;
+      }else{
+        document.getElementById("configError").hidden=false;
+        document.getElementById("expCode").placeholder="불러오지 못함";
+        document.getElementById("ctrlCode").placeholder="불러오지 못함";
+      }
+      const field=document.getElementById("dwellSec");
+      const status=document.getElementById("status");
+      const key="activityDwellSec";
+      function validSeconds(value){return Number.isInteger(value)&&value>=1&&value<=600;}
+      try{
+        const saved=localStorage.getItem(key);
+        if(saved!==null&&saved!==""&&validSeconds(Number(saved)))field.value=String(Number(saved));
+      }catch(error){}
+      function saveSeconds(value){
+        status.classList.remove("error");
+        if(!validSeconds(value)){
+          status.classList.add("error");
+          status.textContent="1초부터 600초 사이의 정수를 입력해 주세요.";
+          return;
+        }
+        try{
+          localStorage.setItem(key,String(value));
+          field.value=String(value);
+          status.textContent="이 브라우저의 읽기 시간을 "+value+"초로 저장했습니다. 집단 코드는 그대로 유지됩니다.";
+        }catch(error){
+          status.classList.add("error");
+          status.textContent="브라우저에 저장하지 못했습니다. 브라우저의 사이트 데이터 설정을 확인해 주세요.";
+        }
+      }
+      document.getElementById("saveDwell").onclick=()=>saveSeconds(Number(field.value));
+      document.getElementById("resetDwell").onclick=()=>saveSeconds(120);
+    })();
+  </script>
 </body>
 </html>

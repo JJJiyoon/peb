@@ -963,11 +963,22 @@
 </div>
 <div id="modalRoot"></div>
 
+<script src="./research-config.js?v=20261027-codes1"></script>
 <script>
+function sharedGroupCodes(){
+  const shared = globalThis.RESEARCH_CONFIG;
+  const codes = shared && shared.groupCodes;
+  if(shared?.schemaVersion!==1 || !codes
+    || typeof codes.exp!=="string" || typeof codes.ctrl!=="string"
+    || !/^\d{1,100}$/.test(codes.exp) || !/^\d{1,100}$/.test(codes.ctrl)
+    || codes.exp===codes.ctrl) return null;
+  return Object.freeze({exp:codes.exp, ctrl:codes.ctrl});
+}
+const CODE_CONFIG_ERROR = "활동 설정을 불러오지 못했습니다. 페이지를 새로고침해 주세요.";
 /* ======================================================================
    설정
    - 입장 코드는 학생 화면에 집단 이름을 보여 주지 않습니다.
-   - 대기 시간과 집단 코드는 /admin 에서 이 브라우저에 저장합니다.
+   - 집단 코드는 research-config.js를 함께 사용하고, 읽기 대기 시간만 이 브라우저에 저장합니다.
    - 정답이 null 인 문제는 원본 문서에서 숫자·보기가 빠져 응답만 기록합니다.
    ====================================================================== */
 const CONFIG = {
@@ -979,10 +990,9 @@ const CONFIG = {
   DWELL_MS: 2 * 60 * 1000,
   DWELL_DEFAULT_SEC: 120,
   DWELL_MAX_SEC: 600,
-  CODES: { exp:"8142", ctrl:"3657" }
+  CODES: sharedGroupCodes()
 };
 const DWELL_STORE_KEY = "activityDwellSec";
-const CODE_STORE_KEY = "activityCodes";
 
 const IMG = "images/";
 
@@ -1541,19 +1551,6 @@ function dwellLabel(){
   if(sec > 0 && sec % 60 === 0) return `${sec / 60}분`;
   return `${sec}초`;
 }
-function loadCodes(){
-  try{
-    const raw = localStorage.getItem(CODE_STORE_KEY);
-    if(!raw) return;
-    const data = JSON.parse(raw);
-    const exp = data && String(data.exp || "").trim();
-    const ctrl = data && String(data.ctrl || "").trim();
-    if(exp && ctrl && exp !== ctrl){
-      CONFIG.CODES.exp = exp;
-      CONFIG.CODES.ctrl = ctrl;
-    }
-  }catch(e){}
-}
 function loadDwell(){
   try{
     const raw = localStorage.getItem(DWELL_STORE_KEY);
@@ -1571,6 +1568,7 @@ function applyDwell(sec, persist){
 }
 
 function renderCode(){
+  const codesReady = CONFIG.CODES!==null;
   if(!state.expose){
     state.expose = Math.random() < 0.5 ? "A" : "B";
     console.log(state.expose);
@@ -1589,21 +1587,28 @@ function renderCode(){
           <label for="f_code">활동 코드</label>
           <input type="text" id="f_code" autocomplete="off" inputmode="numeric" spellcheck="false" placeholder="코드">
         </div>
-        <p class="form-note" id="codeHint"></p>
+        <p class="form-note${codesReady ? "" : " is-error"}" id="codeHint" role="alert">${codesReady ? "" : CODE_CONFIG_ERROR}</p>
         <button type="button" class="primary" id="btnCode">시작하기</button>
       </div>
     </section>`);
   navEl.innerHTML = "";
   const input = document.getElementById("f_code");
   input.maxLength = 100;
+  input.disabled = !codesReady;
   const go = ()=>submitCode(input.value);
-  document.getElementById("btnCode").onclick = go;
+  const button = document.getElementById("btnCode");
+  button.disabled = !codesReady;
+  button.onclick = go;
   input.addEventListener("keydown", (e)=>{ if(e.key === "Enter") go(); });
-  input.focus();
+  if(codesReady) input.focus();
 }
 
 function submitCode(raw){
-  loadCodes();
+  if(!CONFIG.CODES){
+    const hint = document.getElementById("codeHint");
+    if(hint){ hint.textContent = CODE_CONFIG_ERROR; hint.classList.add("is-error"); }
+    return;
+  }
   const code = String(raw || "").trim();
   if(code === CONFIG.CODES.exp){ enterWithCode(code, "exp"); return; }
   if(code === CONFIG.CODES.ctrl){ enterWithCode(code, "ctrl"); return; }
@@ -1619,6 +1624,7 @@ function enterWithCode(code, group){
 }
 
 function chooseGroup(group){
+  if(!CONFIG.CODES || !["exp","ctrl"].includes(group)) return;
   state.group = group;
   if(!state.startedAt){ state.startedAt = Date.now(); submissionId=makeUuid(); receiptToken=makeUuid()+makeUuid(); }
   currentPage = 0;
@@ -2368,7 +2374,6 @@ window.addEventListener("beforeunload", (e)=>{
   }
 });
 
-loadCodes();
 loadDwell();
 render();
 
