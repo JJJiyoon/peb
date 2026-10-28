@@ -816,6 +816,19 @@
     padding:8px 12px; margin-bottom:8px; overflow:visible;
   }
   .figure img{max-width:100%; max-height:340px; width:auto; height:auto; object-fit:contain;}
+  .problem-stimulus{flex:none; width:100%; max-width:900px; margin:0 auto; color:var(--ink);}
+  .problem-equations{padding:18px 24px; border:1px solid var(--line-strong); border-radius:12px; background:var(--white); font-size:clamp(20px,2.5vw,30px); line-height:1.9;}
+  .problem-equations p{margin:0;}
+  .problem-blank{display:inline-block; width:1.15em; height:.85em; margin-left:.15em; border:2px solid currentColor; vertical-align:-.05em;}
+  .problem-table{width:100%; border-collapse:collapse; background:var(--white); font-size:clamp(18px,2.5vw,28px); text-align:center;}
+  .problem-table th,.problem-table td{padding:10px 14px; border:1px solid var(--line-strong); text-align:center;}
+  .problem-table th{background:var(--navy-soft); font-weight:700;}
+  .problem-quantities{display:flex; flex-wrap:wrap; justify-content:center; gap:28px; padding:16px 22px; border:1px solid var(--line-strong); border-radius:12px; background:var(--white); font-size:30px;}
+  .math-number{display:inline-flex; align-items:center; gap:.12em; vertical-align:middle; line-height:1; white-space:nowrap;}
+  .math-fraction{display:inline-flex; flex-direction:column; align-items:stretch; text-align:center; font-variant-numeric:tabular-nums; line-height:1.1;}
+  .math-numerator{padding:0 .13em .08em; border-bottom:1.5px solid currentColor;}
+  .math-denominator{padding:.08em .13em 0;}
+  .number-line{display:block; width:100%; height:auto; max-height:210px; color:var(--ink);}
   .goal-banner{
     margin:auto;
     max-width:18em;
@@ -987,6 +1000,7 @@ const CONFIG = {
   MATH_LIMIT_MS: 20 * 60 * 1000,
   REVIEW_LIMIT_MS: 4 * 60 * 1000,
   WAIT_LIMIT_MS: 4 * 60 * 1000,
+  READING_DWELL_MS: 90 * 1000,
   DWELL_MS: 2 * 60 * 1000,
   DWELL_DEFAULT_SEC: 120,
   DWELL_MAX_SEC: 600,
@@ -1037,20 +1051,20 @@ const PROBLEMS = [
     options:["1개","2개","3개","4개","5개"], answerIndex:3 },
   { id:"q2", no:2, kind:"short", image:"img02.png",
     question:"다음의 힌트를 보고 비밀번호를 구해 보세요.",
-    answer:"41286" },
+    placeholder:"숫자만 작성, 띄어쓰기 하지 말 것.", answer:"41286" },
   { id:"q3", no:3, kind:"mc", image:"img03.png",
     question:"기호를 몫이 큰 순서로 알맞게 나열한 것을 고르세요.",
     options:["㉠, ㉡, ㉢","㉡, ㉠, ㉢","㉡, ㉢, ㉠","㉢, ㉠, ㉡","㉢, ㉡, ㉠"],
     answerIndex:1 },
-  { id:"q4", no:4, kind:"short", image:"img04.png",
-    question:"다음 전개도를 보고 접었을 때 면 ㉣과 평행한 면을 고르세요. 면 ( )",
-    answer:"ㄴ" },
+  { id:"q4", no:4, kind:"short", image:null, diagram:"prism-elements",
+    question:"각기둥의 구성 요소에 관한 식을 다음과 같이 나타냈습니다. □ 안에 공통으로 들어갈 수를 구해 보세요.",
+    answer:"2" },
   { id:"q5", no:5, kind:"short", image:"img05.png",
     question:"길이가 3m인 막대를 똑같이 12도막으로 나누려고 합니다. 한 도막의 길이는 몇 cm로 해야 하는지 구해 보세요. ( )cm",
-    answer:"25" },
-  { id:"q6", no:6, kind:"short", image:"img06.png",
-    question:"자연수의 나눗셈을 이용하여 ㉠에 알맞은 수를 써넣으세요.",
-    answer:"2.14" },
+    placeholder:"숫자만 작성. 단위(cm) 제외", answer:"25" },
+  { id:"q6", no:6, kind:"mc", image:null, diagram:"bank-interest",
+    question:"지은이가 세 은행에 각각 돈을 예금하고 1년이 지나 받은 이자가 아래 표와 같을 때, 이자율이 높은 순으로 은행을 나열한 것을 고르세요.",
+    options:["㉠, ㉡, ㉢","㉡, ㉠, ㉢","㉡, ㉢, ㉠","㉢, ㉠, ㉡","㉢, ㉡, ㉠"], answerIndex:3 },
   { id:"q7", no:7, kind:"mc", image:null,
     question:"물 426g에 소금 74g을 녹여 소금물을 만들었습니다. 만들어진 소금물의 농도는 몇 %인지 고르세요.",
     options:["14.5%","14.8%","15%","15.2%","15.6%"], answerIndex:1 },
@@ -1061,30 +1075,24 @@ const PROBLEMS = [
   { id:"q9", no:9, kind:"mc", image:null,
     question:"가로의 길이가 4.8cm 이고 세로의 길이가 6.3cm인 직사각형이 있습니다. 이 직사각형과 넓이가 같은 마름모의 한 대각선 길이가 7cm 일 때, 이 마름모의 다른 대각선 길이는 몇 cm인지 고르세요.",
     options:["6.82cm","7.54cm","7.92cm","8.25cm","8.64cm"], answerIndex:4 },
-  { id:"q10", no:10, kind:"mc", image:"img10.png",
-    question:"3월부터 5월까지 민성이가 용돈을 사용한 항목을 조사하여 나타낸 띠그래프입니다. 띠그래프에 대한 설명이 잘못된 것을 고르세요.",
-    options:[
-      "민성이가 간식을 사는 데 사용한 용돈의 비율은 점차 증가하고 있습니다.",
-      "민성이가 4월에 저축한 용돈 비율은 전체의 25%입니다.",
-      "민성이가 5월에 학용품을 사는 데 사용한 용돈 금액과 장난감을 사는 데 사용한 용돈 금액은 같습니다.",
-      "민성이가 저축한 용돈의 비율은 점차 감소하고 있습니다.",
-      "민성이가 3월에 가장 많은 용돈을 사용한 항목은 학용품입니다."
-    ], answerIndex:3 },
+  { id:"q10", no:10, kind:"mc", image:null, diagram:"sugar-salt",
+    question:"다음은 어느 분식집에서 일주일 동안 사용한 설탕과 소금의 양입니다. 설탕과 소금을 각각 매일 같은 양을 사용했다면 하루에 사용한 설탕은 소금보다 몇 kg 더 많은지 고르세요.",
+    options:["1/6kg","1/5kg","5/9kg","3/4kg","9/10kg"], answerIndex:0 },
   { id:"q11", no:11, kind:"mc", image:null,
     question:"넓이가 700m²인 텃밭에 옥수수를 483m²만큼 심었습니다. 전체 텃밭의 넓이에 대한 옥수수를 심은 넓이의 비율을 백분율로 알맞게 나타낸 것을 고르세요.",
     options:["62%","65%","69%","72%","74%"], answerIndex:2 },
-  { id:"q12", no:12, kind:"short", image:"img12.png",
-    question:"다음 그림에서 쌓기나무 한 개의 부피가 1cm³일 때, 입체도형의 부피는 몇 cm³인지 구해 보세요. (단, 밑면에 놓인 쌓기나무는 11개입니다.) ( )cm³",
-    answer:"44" },
+  { id:"q12", no:12, kind:"mc", image:null, diagram:"fraction-number-line",
+    question:"수직선에서 ㉠에 알맞은 분수를 찾아 ㉠÷4의 몫을 구한 것을 고르세요.",
+    options:["3 16/100","3 6/10","3 17/100","79/100","16/100"], answerIndex:3 },
   { id:"q13", no:13, kind:"short", image:"img13.png",
     question:"길이가 140.35m인 산책로에 나무 8그루가 똑같은 간격으로 심어져 있습니다. 나무와 나무 사이의 중간 지점마다 꽃을 한 송이씩 심으려고 합니다. 이때 나무와 그 바로 옆에 있는 꽃 사이의 간격을 몇 m로 해야 하는지 구해 보세요. (단, 나무와 꽃의 두께는 생각하지 않으며, 나무와 나무 사이에는 꽃이 한 송이씩만 있습니다.) ( )m",
-    answer:"10.025" },
-  { id:"q14", no:14, kind:"mc", image:"img14.png",
-    question:"다음 직육면체를 잘라서 만들 수 있는 가장 큰 정육면체의 부피로 알맞은 것을 고르세요.",
-    options:["187cm³","198cm³","201cm³","216cm³","232cm³"], answerIndex:3 },
+    placeholder:"숫자만 작성. 단위(m) 제외", answer:"10.025" },
+  { id:"q14", no:14, kind:"short", image:null,
+    question:"넓이가 4.32cm²인 사다리꼴이 있습니다. 사다리꼴의 높이는 4cm이고, 윗변의 길이가 아랫변의 길이의 2배라고 할 때, 윗변의 길이는 몇 cm인지 구해 보세요.",
+    placeholder:"숫자만 작성. 단위(cm) 제외", answer:"1.44" },
   { id:"q15", no:15, kind:"short", image:"img15.png",
     question:"안치수가 아래와 같은 물탱크에 물을 가득 채우려고 합니다. 한 번에 0.36m³씩 물을 붓는다면 물을 몇 번 부어야 할까요? 숫자만 작성하시오.",
-    answer:"28" }
+    placeholder:"숫자만 작성. 단위(번) 제외", answer:"28" }
 ];
 
 const state = {
@@ -1467,7 +1475,8 @@ function dwellLeft(page){
   if(!page?.dwell || page.type==="sentence") return 0;
   const saved = state.dwellMs[page.id] || 0;
   const live = Date.now() - pageEnteredAt;
-  return Math.max(0, CONFIG.DWELL_MS - saved - live);
+  const limit = ["read","expert","stories"].includes(page.type) ? CONFIG.READING_DWELL_MS : CONFIG.DWELL_MS;
+  return Math.max(0, limit - saved - live);
 }
 
 function renderChrome(current, total, title){
@@ -1644,10 +1653,10 @@ function renderInfo(){
     </header>
     <section class="panel form-panel info-form">
       <div class="form-stack">
-        <div class="field"><label for="f_school">학교</label><input type="text" id="f_school" autocomplete="off" value="${escapeHtml(s.school)}" placeholder="예: 한빛초등학교"></div>
-        <div class="field"><label for="f_grade">학년</label><input type="text" id="f_grade" autocomplete="off" value="${escapeHtml(s.grade)}" placeholder="예: 5학년"></div>
-        <div class="field"><label for="f_classroom">반</label><input type="text" id="f_classroom" autocomplete="off" value="${escapeHtml(s.classroom)}" placeholder="예: 3반"></div>
-        <div class="field"><label for="f_number">번호</label><input type="text" id="f_number" autocomplete="off" inputmode="numeric" value="${escapeHtml(s.number)}" placeholder="예: 12"></div>
+        <div class="field"><label for="f_school">학교</label><input type="text" id="f_school" autocomplete="off" value="${escapeHtml(s.school)}" placeholder="예: 한빛초"></div>
+        <div class="field"><label for="f_grade">학년</label><input type="text" id="f_grade" autocomplete="off" inputmode="numeric" value="${escapeHtml(s.grade)}" placeholder="숫자만 적으시오. 예) 6학년일 경우, 6 입력"></div>
+        <div class="field"><label for="f_classroom">반</label><input type="text" id="f_classroom" autocomplete="off" inputmode="numeric" value="${escapeHtml(s.classroom)}" placeholder="숫자만 적으시오. 예) 1반일 경우, 1 입력"></div>
+        <div class="field"><label for="f_number">번호</label><input type="text" id="f_number" autocomplete="off" inputmode="numeric" value="${escapeHtml(s.number)}" placeholder="숫자만 적으시오. 예) 22번일 경우, 22 입력"></div>
         <div class="field"><label for="f_name">이름</label><input type="text" id="f_name" autocomplete="off" value="${escapeHtml(s.name)}" placeholder="예: 홍길동"></div>
         <div class="field">
           <span id="genderLabel">성별</span>
@@ -1821,6 +1830,36 @@ function renderClosing(){
     <p class="goal-banner">설문이 모두 끝났습니다. 진행하는 선생님의 안내를 기다려 주세요.</p>`);
 }
 
+function mathOptionHtml(value){
+  const match = String(value).match(/^(?:(\d+) )?(\d+)\/(\d+)(kg)?$/);
+  if(!match) return escapeHtml(value);
+  const [,whole,numerator,denominator,unit] = match;
+  return `<span class="math-number" aria-label="${escapeHtml(value)}">${whole ? `<span>${whole}</span>` : ""}<span class="math-fraction"><span class="math-numerator">${numerator}</span><span class="math-denominator">${denominator}</span></span>${unit ? `<span>${unit}</span>` : ""}</span>`;
+}
+
+function problemDiagramHtml(item){
+  if(item.diagram==="prism-elements") return `<div class="problem-stimulus problem-equations">
+    <p>(면의 수) = (한 밑면의 변의 수) + <span class="problem-blank" aria-label="빈칸"></span></p>
+    <p>(꼭짓점의 수) = (한 밑면의 변의 수) × <span class="problem-blank" aria-label="빈칸"></span></p>
+  </div>`;
+  if(item.diagram==="bank-interest") return `<div class="problem-stimulus"><table class="problem-table" aria-label="세 은행에 예금한 돈과 1년 동안 받은 이자">
+    <thead><tr><th scope="col">은행</th><th scope="col">예금한 돈(원)</th><th scope="col">받은 이자(원)</th></tr></thead>
+    <tbody><tr><th scope="row">㉠</th><td>100000</td><td>2300</td></tr><tr><th scope="row">㉡</th><td>80000</td><td>1600</td></tr><tr><th scope="row">㉢</th><td>150000</td><td>3750</td></tr></tbody>
+  </table></div>`;
+  if(item.diagram==="sugar-salt") return `<div class="problem-stimulus problem-quantities"><span>설탕: ${mathOptionHtml("4 1/2kg")}</span><span>소금: ${mathOptionHtml("3 1/3kg")}</span></div>`;
+  if(item.diagram==="fraction-number-line"){
+    const ticks=Array.from({length:11},(_,i)=>`<line x1="${64+i*60}" y1="${i===0||i===10?35:43}" x2="${64+i*60}" y2="${i===0||i===10?95:87}"/>`).join("");
+    return `<div class="problem-stimulus"><svg class="number-line" viewBox="0 0 728 190" role="img" aria-label="3과 10분의 1부터 3과 10분의 2까지 10등분한 수직선. 왼쪽 끝점에서 오른쪽으로 여섯 번째 눈금에 ㉠이 표시되어 있습니다.">
+      <g fill="none" stroke="currentColor" stroke-width="2"><line x1="40" y1="65" x2="688" y2="65"/>${ticks}</g>
+      <g fill="currentColor" font-family="sans-serif" font-size="28" text-anchor="middle"><text x="424" y="123">㉠</text>
+        <text x="42" y="150">3</text><text x="78" y="132">1</text><text x="78" y="172">10</text>
+        <text x="642" y="150">3</text><text x="678" y="132">2</text><text x="678" y="172">10</text>
+      </g><g stroke="currentColor" stroke-width="1.5"><line x1="59" y1="141" x2="97" y2="141"/><line x1="659" y1="141" x2="697" y2="141"/></g>
+    </svg></div>`;
+  }
+  return figureHtml(item.image);
+}
+
 function renderProblem(item, saved, fresh){
   const letters = ["1","2","3","4","5"];
   const selected = !fresh && saved ? saved.selected : null;
@@ -1829,19 +1868,19 @@ function renderProblem(item, saved, fresh){
     <div class="options">
       ${item.options.map((opt,i)=>`
         <div class="opt ${selected===i?"selected":""}" data-idx="${i}" role="button" tabindex="0">
-          <span class="letter">${letters[i]}</span><span>${escapeHtml(opt)}</span>
+          <span class="letter">${letters[i]}</span><span>${mathOptionHtml(opt)}</span>
         </div>`).join("")}
     </div>` : `
     <div class="panel answer-well">
       <label class="kicker" for="f_answer">정답을 입력하세요</label>
-      <input type="text" id="f_answer" autocomplete="off" value="${escapeHtml(value)}" placeholder="답 입력">
+      <input type="text" id="f_answer" autocomplete="off" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder||"답 입력")}">
     </div>`;
   return screen("screen-quiz", `
     <div class="quiz-head">
       <p class="kicker">문제 ${item.no}</p>
       <h1 class="question">${escapeHtml(item.question)}</h1>
     </div>
-    ${figureHtml(item.image)}
+    ${problemDiagramHtml(item)}
     ${options}`);
 }
 
@@ -2256,7 +2295,7 @@ function buildPayload(){
     scales[it.id]=Number.isFinite(state.scales[it.id]) ? state.scales[it.id] : null;
   });
   return {
-    schema_version:"1.1.0", submission_id:submissionId, receipt_token:receiptToken,
+    schema_version:"1.2.0", submission_id:submissionId, receipt_token:receiptToken,
     client_started_at:new Date(state.startedAt).toISOString(),
     client_submitted_at:new Date().toISOString(),group:state.group,expose:state.expose,
     entry_code:state.entryCode,

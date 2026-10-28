@@ -32,13 +32,13 @@
     <label for="ctrlCode">통제집단 코드</label>
     <input id="ctrlCode" type="text" readonly autocomplete="off" aria-describedby="codeHelp">
     <p id="codeHelp" class="help">고정된 코드입니다. 이 화면을 다시 열거나 아래 읽기 시간을 저장해도 바뀌지 않습니다.</p>
-    <h2>현재 브라우저의 읽기 시간</h2>
-    <p class="help">읽기 시간 설정은 현재 브라우저에만 저장됩니다. 학생 활동을 시작하기 전에 활동 화면을 새로고침하면 반영됩니다.</p>
-    <label for="dwellSec">글 화면에 머무는 시간 (초)</label>
+    <h2>화면별 최소 대기 시간</h2>
+    <p class="help">04~06페이지는 각 90초로 고정됩니다. 아래 설정은 07페이지 ‘정리하기’에만 적용되며 현재 브라우저에 저장됩니다. 학생 활동을 시작하기 전에 활동 화면을 새로고침하면 반영됩니다.</p>
+    <label for="dwellSec">07페이지 정리하기 최소 대기 시간 (초)</label>
     <input id="dwellSec" type="number" min="1" max="600" step="1" value="120" inputmode="numeric" aria-describedby="dwellHelp">
     <p id="dwellHelp" class="help">1초부터 600초까지 설정할 수 있습니다.</p>
     <div class="actions">
-      <button id="saveDwell" type="button">읽기 시간 저장</button>
+      <button id="saveDwell" type="button">정리하기 시간 저장</button>
       <button id="resetDwell" type="button">120초로 되돌리기</button>
     </div>
     <p id="status" role="status" aria-live="polite"></p>
@@ -80,7 +80,7 @@
         try{
           localStorage.setItem(key,String(value));
           field.value=String(value);
-          status.textContent="이 브라우저의 읽기 시간을 "+value+"초로 저장했습니다. 집단 코드는 그대로 유지됩니다.";
+          status.textContent="이 브라우저의 07페이지 대기 시간을 "+value+"초로 저장했습니다. 04~06페이지는 각 90초이며 집단 코드는 그대로 유지됩니다.";
         }catch(error){
           status.classList.add("error");
           status.textContent="브라우저에 저장하지 못했습니다. 브라우저의 사이트 데이터 설정을 확인해 주세요.";
