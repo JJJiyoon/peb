@@ -13,12 +13,9 @@
     input{width:100%;font:inherit;padding:10px 12px;border:1px solid #90969d;border-radius:4px}
     input[readonly]{background:#f3f5f6;font-variant-numeric:tabular-nums;cursor:default}
     .help{font-size:15px;color:#515961;margin:8px 0 16px}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
-    button{font:inherit;padding:9px 14px;border:1px solid #90969d;border-radius:4px;background:#f3f5f6;cursor:pointer}
     button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #207543;outline-offset:3px}
-    #saveDwell{background:#216c41;color:white;border-color:#216c41}
     .error{color:#a61e1e} [hidden]{display:none!important}
-    #status{min-height:28px;margin:16px 0} a{color:#185c39}
+    a{color:#185c39}
   </style>
 </head>
 <body>
@@ -31,17 +28,12 @@
     <input id="expCode" type="text" readonly autocomplete="off" aria-describedby="codeHelp">
     <label for="ctrlCode">통제집단 코드</label>
     <input id="ctrlCode" type="text" readonly autocomplete="off" aria-describedby="codeHelp">
-    <p id="codeHelp" class="help">고정된 코드입니다. 이 화면을 다시 열거나 아래 읽기 시간을 저장해도 바뀌지 않습니다.</p>
+    <p id="codeHelp" class="help">고정된 코드입니다. 이 화면을 다시 열거나 다른 기기로 접속해도 바뀌지 않습니다.</p>
     <h2>화면별 최소 대기 시간</h2>
-    <p class="help">04~06페이지는 각 90초로 고정됩니다. 아래 설정은 07페이지 ‘정리하기’에만 적용되며 현재 브라우저에 저장됩니다. 학생 활동을 시작하기 전에 활동 화면을 새로고침하면 반영됩니다.</p>
-    <label for="dwellSec">07페이지 정리하기 최소 대기 시간 (초)</label>
-    <input id="dwellSec" type="number" min="1" max="600" step="1" value="120" inputmode="numeric" aria-describedby="dwellHelp">
-    <p id="dwellHelp" class="help">1초부터 600초까지 설정할 수 있습니다.</p>
-    <div class="actions">
-      <button id="saveDwell" type="button">정리하기 시간 저장</button>
-      <button id="resetDwell" type="button">120초로 되돌리기</button>
-    </div>
-    <p id="status" role="status" aria-live="polite"></p>
+    <p class="help">04~07페이지는 모든 기기와 브라우저에서 각각 60초로 고정됩니다.</p>
+    <label for="dwellSec">04~07페이지 최소 대기 시간 (초)</label>
+    <input id="dwellSec" type="number" value="60" readonly aria-describedby="dwellHelp">
+    <p id="dwellHelp" class="help">이전 브라우저에 저장된 읽기 시간 설정은 사용하지 않습니다. 08페이지는 문장을 작성하면 다음으로 진행할 수 있습니다.</p>
     <a href="../">활동 화면으로</a>
   </main>
   <script src="../research-config.js?v=20261027-codes1"></script>
@@ -62,32 +54,6 @@
         document.getElementById("expCode").placeholder="불러오지 못함";
         document.getElementById("ctrlCode").placeholder="불러오지 못함";
       }
-      const field=document.getElementById("dwellSec");
-      const status=document.getElementById("status");
-      const key="activityDwellSec";
-      function validSeconds(value){return Number.isInteger(value)&&value>=1&&value<=600;}
-      try{
-        const saved=localStorage.getItem(key);
-        if(saved!==null&&saved!==""&&validSeconds(Number(saved)))field.value=String(Number(saved));
-      }catch(error){}
-      function saveSeconds(value){
-        status.classList.remove("error");
-        if(!validSeconds(value)){
-          status.classList.add("error");
-          status.textContent="1초부터 600초 사이의 정수를 입력해 주세요.";
-          return;
-        }
-        try{
-          localStorage.setItem(key,String(value));
-          field.value=String(value);
-          status.textContent="이 브라우저의 07페이지 대기 시간을 "+value+"초로 저장했습니다. 04~06페이지는 각 90초이며 집단 코드는 그대로 유지됩니다.";
-        }catch(error){
-          status.classList.add("error");
-          status.textContent="브라우저에 저장하지 못했습니다. 브라우저의 사이트 데이터 설정을 확인해 주세요.";
-        }
-      }
-      document.getElementById("saveDwell").onclick=()=>saveSeconds(Number(field.value));
-      document.getElementById("resetDwell").onclick=()=>saveSeconds(120);
     })();
   </script>
 </body>

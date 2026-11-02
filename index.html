@@ -816,6 +816,7 @@
     padding:8px 12px; margin-bottom:8px; overflow:visible;
   }
   .figure img{max-width:100%; max-height:340px; width:auto; height:auto; object-fit:contain;}
+  .figure-revised img{width:min(100%,480px); max-height:none;}
   .problem-stimulus{flex:none; width:100%; max-width:900px; margin:0 auto; color:var(--ink);}
   .problem-equations{padding:18px 24px; border:1px solid var(--line-strong); border-radius:12px; background:var(--white); font-size:clamp(20px,2.5vw,30px); line-height:1.9;}
   .problem-equations p{margin:0;}
@@ -991,7 +992,7 @@ const CODE_CONFIG_ERROR = "활동 설정을 불러오지 못했습니다. 페이
 /* ======================================================================
    설정
    - 입장 코드는 학생 화면에 집단 이름을 보여 주지 않습니다.
-   - 집단 코드는 research-config.js를 함께 사용하고, 읽기 대기 시간만 이 브라우저에 저장합니다.
+   - 집단 코드는 research-config.js를 함께 사용하고, 04~07페이지의 최소 대기는 모든 브라우저에서 각 60초입니다.
    - 정답이 null 인 문제는 원본 문서에서 숫자·보기가 빠져 응답만 기록합니다.
    ====================================================================== */
 const CONFIG = {
@@ -1000,13 +1001,9 @@ const CONFIG = {
   MATH_LIMIT_MS: 20 * 60 * 1000,
   REVIEW_LIMIT_MS: 4 * 60 * 1000,
   WAIT_LIMIT_MS: 4 * 60 * 1000,
-  READING_DWELL_MS: 90 * 1000,
-  DWELL_MS: 2 * 60 * 1000,
-  DWELL_DEFAULT_SEC: 120,
-  DWELL_MAX_SEC: 600,
+  DWELL_MS: 60 * 1000,
   CODES: sharedGroupCodes()
 };
-const DWELL_STORE_KEY = "activityDwellSec";
 
 const IMG = "images/";
 
@@ -1046,41 +1043,40 @@ const LIKERT_LABELS = ["전혀\n그렇지\n않다", "그렇지\n않다", "보통
 const ADAPT_INTRO = "방금 수학 활동을 하면서 자신의 답이 틀렸다는 것을 알게 되었을 때, 어떤 생각과 마음을 가졌고 어떻게 했는지 떠올려 주세요. 평소 모습이나 바람직하다고 생각하는 모습이 아니라 이번 활동에서의 경험에 답해 주세요.";
 
 const PROBLEMS = [
-  { id:"q1", no:1, kind:"mc", image:"img01.png",
-    question:"입체도형은 평면도형보다 몇 개 더 많은가요?",
-    options:["1개","2개","3개","4개","5개"], answerIndex:3 },
-  { id:"q2", no:2, kind:"short", image:"img02.png",
-    question:"다음의 힌트를 보고 비밀번호를 구해 보세요.",
-    placeholder:"숫자만 작성, 띄어쓰기 하지 말 것.", answer:"41286" },
+  { id:"q1", no:1, kind:"short", image:null,
+    question:"면의 수, 모서리의 수, 꼭짓점의 수의 합이 56개인 각기둥이 있습니다. 이 각기둥과 밑면의 모양이 같은 각뿔의 면의 수, 모서리의 수, 꼭짓점의 수의 합은 얼마입니까?",
+    placeholder:"숫자만 작성", answer:"38" },
+  { id:"q2", no:2, kind:"short", image:null,
+    question:"소수 7.2에 어떤 소수를 곱해야 하는데 소수점의 위치를 잘못 보고 어떤 소수의 0.1배인 수를 곱했습니다. 바르게 계산한 값과 잘못 계산한 값의 차가 27.864일 때 어떤 소수를 구하시오.",
+    placeholder:"숫자만 작성, 띄어쓰기 하지 말 것.", answer:"4.3" },
   { id:"q3", no:3, kind:"mc", image:"img03.png",
     question:"기호를 몫이 큰 순서로 알맞게 나열한 것을 고르세요.",
     options:["㉠, ㉡, ㉢","㉡, ㉠, ㉢","㉡, ㉢, ㉠","㉢, ㉠, ㉡","㉢, ㉡, ㉠"],
     answerIndex:1 },
-  { id:"q4", no:4, kind:"short", image:null, diagram:"prism-elements",
-    question:"각기둥의 구성 요소에 관한 식을 다음과 같이 나타냈습니다. □ 안에 공통으로 들어갈 수를 구해 보세요.",
-    answer:"2" },
-  { id:"q5", no:5, kind:"short", image:"img05.png",
-    question:"길이가 3m인 막대를 똑같이 12도막으로 나누려고 합니다. 한 도막의 길이는 몇 cm로 해야 하는지 구해 보세요. ( )cm",
-    placeholder:"숫자만 작성. 단위(cm) 제외", answer:"25" },
+  { id:"q4", no:4, kind:"short", image:"q04_prism_net_v130.png",
+    question:"다음 각기둥의 전개도를 접어서 입체도형을 만들었습니다. 만든 입체도형에서 점 ㄱ과 점 ㄴ 사이의 거리는 몇 cm입니까? 단위를 생략하고 숫자만 작성하시오.",
+    placeholder:"숫자만 작성. 단위(cm) 제외", answer:"12" },
+  { id:"q5", no:5, kind:"short", image:"q05_parallelogram_v130.png",
+    question:"평행사변형 ㄱㄴㄷㄹ에서 변 ㄱㄴ, 변 ㄱㄹ의 중점을 각각 ㅁ, ㅂ이라 하고, 선분 ㅁㅂ과 대각선 ㄱㄷ이 만나는 점을 ㅅ이라고 할 때, 평행사변형 ㄱㄴㄷㄹ의 넓이는 삼각형 ㄱㅁㅅ의 넓이의 몇 배입니까? 단위(배)를 생략하고 숫자만 입력하시오.",
+    placeholder:"숫자만 작성. 단위(배) 제외", answer:"16" },
   { id:"q6", no:6, kind:"mc", image:null, diagram:"bank-interest",
     question:"지은이가 세 은행에 각각 돈을 예금하고 1년이 지나 받은 이자가 아래 표와 같을 때, 이자율이 높은 순으로 은행을 나열한 것을 고르세요.",
     options:["㉠, ㉡, ㉢","㉡, ㉠, ㉢","㉡, ㉢, ㉠","㉢, ㉠, ㉡","㉢, ㉡, ㉠"], answerIndex:3 },
   { id:"q7", no:7, kind:"mc", image:null,
     question:"물 426g에 소금 74g을 녹여 소금물을 만들었습니다. 만들어진 소금물의 농도는 몇 %인지 고르세요.",
     options:["14.5%","14.8%","15%","15.2%","15.6%"], answerIndex:1 },
-  { id:"q8", no:8, kind:"mc", image:"img08.png",
-    question:"윤재네 학교 고학년 학생 중 체험학습에 참여한 학생 수를 나타낸 표입니다. 학년의 전체 학생 수에 대한 참여 학생 수의 비율이 가장 높은 학년과 참여 비율을 알맞게 연결한 것을 고르세요.",
-    options:["4학년, 0.88","5학년, 0.85","6학년, 0.86","4학년, 0.8","6학년, 0.83"],
-    answerIndex:2 },
+  { id:"q8", no:8, kind:"short", image:null,
+    question:"어떤 소수의 소수점을 오른쪽으로 한 자리 옮긴 수를 ㉠, 오른쪽으로 두 자리 옮긴 수를 ㉡이라고 합니다. ㉠과 ㉡의 합이 282.59일 때, ㉠과 ㉡의 차를 구하시오.",
+    placeholder:"숫자만 작성", answer:"231.21" },
   { id:"q9", no:9, kind:"mc", image:null,
     question:"가로의 길이가 4.8cm 이고 세로의 길이가 6.3cm인 직사각형이 있습니다. 이 직사각형과 넓이가 같은 마름모의 한 대각선 길이가 7cm 일 때, 이 마름모의 다른 대각선 길이는 몇 cm인지 고르세요.",
     options:["6.82cm","7.54cm","7.92cm","8.25cm","8.64cm"], answerIndex:4 },
   { id:"q10", no:10, kind:"mc", image:null, diagram:"sugar-salt",
     question:"다음은 어느 분식집에서 일주일 동안 사용한 설탕과 소금의 양입니다. 설탕과 소금을 각각 매일 같은 양을 사용했다면 하루에 사용한 설탕은 소금보다 몇 kg 더 많은지 고르세요.",
     options:["1/6kg","1/5kg","5/9kg","3/4kg","9/10kg"], answerIndex:0 },
-  { id:"q11", no:11, kind:"mc", image:null,
-    question:"넓이가 700m²인 텃밭에 옥수수를 483m²만큼 심었습니다. 전체 텃밭의 넓이에 대한 옥수수를 심은 넓이의 비율을 백분율로 알맞게 나타낸 것을 고르세요.",
-    options:["62%","65%","69%","72%","74%"], answerIndex:2 },
+  { id:"q11", no:11, kind:"short", image:null,
+    question:"유승이네는 밭을 가지고 있습니다. 이 밭의 넓이의 0.56보다 6m² 더 많게 고구마를 심고, 나머지 밭의 넓이의 0.66보다 7.2m² 더 적게 감자를 심었습니다. 아무것도 심지 않은 밭의 넓이가 252m²일 때, 고구마를 심은 밭의 넓이는 몇 m²입니까? 단위(m²)를 생략하고 숫자만 적으시오.",
+    placeholder:"숫자만 작성. 단위(m²) 제외", answer:"930" },
   { id:"q12", no:12, kind:"mc", image:null, diagram:"fraction-number-line",
     question:"수직선에서 ㉠에 알맞은 분수를 찾아 ㉠÷4의 몫을 구한 것을 고르세요.",
     options:["3 16/100","3 6/10","3 17/100","79/100","16/100"], answerIndex:3 },
@@ -1088,8 +1084,8 @@ const PROBLEMS = [
     question:"길이가 140.35m인 산책로에 나무 8그루가 똑같은 간격으로 심어져 있습니다. 나무와 나무 사이의 중간 지점마다 꽃을 한 송이씩 심으려고 합니다. 이때 나무와 그 바로 옆에 있는 꽃 사이의 간격을 몇 m로 해야 하는지 구해 보세요. (단, 나무와 꽃의 두께는 생각하지 않으며, 나무와 나무 사이에는 꽃이 한 송이씩만 있습니다.) ( )m",
     placeholder:"숫자만 작성. 단위(m) 제외", answer:"10.025" },
   { id:"q14", no:14, kind:"short", image:null,
-    question:"넓이가 4.32cm²인 사다리꼴이 있습니다. 사다리꼴의 높이는 4cm이고, 윗변의 길이가 아랫변의 길이의 2배라고 할 때, 윗변의 길이는 몇 cm인지 구해 보세요.",
-    placeholder:"숫자만 작성. 단위(cm) 제외", answer:"1.44" },
+    question:"하루에 84분씩 일정하게 늦어지는 시계가 있습니다. 이 시계를 오전 10시 20분 30초에 정확하게 맞춰 놓고 5시간 후에 시계를 보았을 때, 시계가 가리키는 시각은 오후 ㉠시 ㉡분 ㉢초였습니다. 이때 ㉠+㉡+㉢의 값을 구하시오.",
+    placeholder:"숫자만 작성", answer:"6" },
   { id:"q15", no:15, kind:"short", image:"img15.png",
     question:"안치수가 아래와 같은 물탱크에 물을 가득 채우려고 합니다. 한 번에 0.36m³씩 물을 붓는다면 물을 몇 번 부어야 할까요? 숫자만 작성하시오.",
     placeholder:"숫자만 작성. 단위(번) 제외", answer:"28" }
@@ -1475,8 +1471,7 @@ function dwellLeft(page){
   if(!page?.dwell || page.type==="sentence") return 0;
   const saved = state.dwellMs[page.id] || 0;
   const live = Date.now() - pageEnteredAt;
-  const limit = ["read","expert","stories"].includes(page.type) ? CONFIG.READING_DWELL_MS : CONFIG.DWELL_MS;
-  return Math.max(0, limit - saved - live);
+  return Math.max(0, CONFIG.DWELL_MS - saved - live);
 }
 
 function renderChrome(current, total, title){
@@ -1500,7 +1495,9 @@ function memoHtml(page){
 
 function figureHtml(file){
   if(!file) return "";
-  return `<div class="figure"><img src="${IMG}${file}" alt=""></div>`;
+  const labels={"q04_prism_net_v130.png":"점 ㄱ과 ㄴ, 길이가 표시된 각기둥의 전개도", "q05_parallelogram_v130.png":"점 ㄱ, ㄴ, ㄷ, ㄹ, ㅁ, ㅂ, ㅅ이 표시된 평행사변형"};
+  const label=labels[file]||"";
+  return `<div class="figure${label?" figure-revised":""}"><img src="${IMG}${file}" alt="${label}"></div>`;
 }
 
 function closeModal(){ modalRoot.innerHTML = ""; }
@@ -1560,22 +1557,6 @@ function dwellLabel(){
   if(sec > 0 && sec % 60 === 0) return `${sec / 60}분`;
   return `${sec}초`;
 }
-function loadDwell(){
-  try{
-    const raw = localStorage.getItem(DWELL_STORE_KEY);
-    if(raw == null || raw === "") return;
-    applyDwell(Number(raw), false);
-  }catch(e){}
-}
-function applyDwell(sec, persist){
-  if(!Number.isInteger(sec) || sec < 1 || sec > CONFIG.DWELL_MAX_SEC) return false;
-  CONFIG.DWELL_MS = sec * 1000;
-  if(persist){
-    try{ localStorage.setItem(DWELL_STORE_KEY, String(sec)); }catch(e){}
-  }
-  return true;
-}
-
 function renderCode(){
   const codesReady = CONFIG.CODES!==null;
   if(!state.expose){
@@ -2295,7 +2276,7 @@ function buildPayload(){
     scales[it.id]=Number.isFinite(state.scales[it.id]) ? state.scales[it.id] : null;
   });
   return {
-    schema_version:"1.2.0", submission_id:submissionId, receipt_token:receiptToken,
+    schema_version:"1.3.0", submission_id:submissionId, receipt_token:receiptToken,
     client_started_at:new Date(state.startedAt).toISOString(),
     client_submitted_at:new Date().toISOString(),group:state.group,expose:state.expose,
     entry_code:state.entryCode,
@@ -2413,7 +2394,6 @@ window.addEventListener("beforeunload", (e)=>{
   }
 });
 
-loadDwell();
 render();
 
 </script>
